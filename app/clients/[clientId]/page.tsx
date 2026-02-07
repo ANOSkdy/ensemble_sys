@@ -38,10 +38,7 @@ export default async function ClientDetailPage({
   }
 
   const user = await getUserOrg();
-  const orgId = user.orgId;
-  if (orgId == null) {
-    notFound();
-  }
+  const orgId = user.orgId ?? notFound();
   const client = await getClient(orgId, params.clientId);
 
   if (!client) {
@@ -51,10 +48,7 @@ export default async function ClientDetailPage({
   async function updateClientAction(formData: FormData) {
     "use server";
     const currentUser = await getUserOrg();
-    const currentOrgId = currentUser.orgId;
-    if (currentOrgId == null) {
-      notFound();
-    }
+    const currentOrgId = currentUser.orgId ?? notFound();
     const data = parseClientFormData(formData);
     const updated = await updateClient(
       currentOrgId,

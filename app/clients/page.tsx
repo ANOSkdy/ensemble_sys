@@ -31,20 +31,14 @@ async function getUserOrg() {
 
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const user = await getUserOrg();
-  const orgId = user.orgId;
-  if (orgId == null) {
-    notFound();
-  }
+  const orgId = user.orgId ?? notFound();
   const query = searchParams?.q?.trim();
   const clients = await listClients(orgId, query);
 
   async function createClientAction(formData: FormData) {
     "use server";
     const currentUser = await getUserOrg();
-    const currentOrgId = currentUser.orgId;
-    if (currentOrgId == null) {
-      notFound();
-    }
+    const currentOrgId = currentUser.orgId ?? notFound();
     const data = parseClientFormData(formData);
     const client = await createClient(currentOrgId, data);
     redirect(`/clients/${client.id}`);
