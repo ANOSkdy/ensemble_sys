@@ -2,7 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { query } from "@/lib/db";
 import {
   SESSION_COOKIE_NAME,
@@ -51,7 +51,13 @@ export async function loginAction(
       sub: String(user.id),
       email: user.email
     });
-    cookies().set(SESSION_COOKIE_NAME, token, getSessionCookieOptions());
+    const forwardedProto = headers().get("x-forwarded-proto");
+    const secure = forwardedProto ? forwardedProto === "https" : undefined;
+    cookies().set(
+      SESSION_COOKIE_NAME,
+      token,
+      getSessionCookieOptions({ secure })
+    );
   } catch (error) {
     if (error instanceof Error && error.message === "Missing AUTH_SECRET") {
       return { ok: false, message: "AUTH_SECRET が未設定です。" };

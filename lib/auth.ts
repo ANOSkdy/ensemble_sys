@@ -16,11 +16,15 @@ export function getAuthSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-export function getSessionCookieOptions() {
+export function getSessionCookieOptions(options?: { secure?: boolean }) {
+  const secure =
+    typeof options?.secure === "boolean"
+      ? options.secure
+      : process.env.NODE_ENV === "production";
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     path: "/",
     maxAge: SESSION_DURATION_SECONDS
   };
