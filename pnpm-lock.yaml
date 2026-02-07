@@ -54,4 +54,42 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
-packages: {}
+packages:
+  /@types/bcryptjs@2.4.2:
+    resolution: {integrity: ""}
+    dev: true
+  /@types/node@20.14.10:
+    resolution: {integrity: ""}
+    dev: true
+  /@types/pg@8.11.6:
+    resolution: {integrity: ""}
+    dev: true
+  /@types/react-dom@18.3.0:
+    resolution: {integrity: ""}
+    dev: true
+  /@types/react@18.3.3:
+    resolution: {integrity: ""}
+    dev: true
+  /bcryptjs@2.4.3:
+    resolution: {integrity: ""}
+  /eslint-config-next@14.2.5:
+    resolution: {integrity: ""}
+    dev: true
+  /eslint@8.57.0:
+    resolution: {integrity: ""}
+    dev: true
+  /jose@5.6.3:
+    resolution: {integrity: ""}
+  /next@14.2.5:
+    resolution: {integrity: ""}
+  /pg@8.12.0:
+    resolution: {integrity: ""}
+  /react-dom@18.3.1:
+    resolution: {integrity: ""}
+  /react@18.3.1:
+    resolution: {integrity: ""}
+  /typescript@5.5.4:
+    resolution: {integrity: ""}
+    dev: true
+  /zod@3.23.8:
+    resolution: {integrity: ""}
