@@ -51,9 +51,13 @@ export default async function ClientDetailPage({
   async function updateClientAction(formData: FormData) {
     "use server";
     const currentUser = await getUserOrg();
+    const currentOrgId = currentUser.orgId;
+    if (currentOrgId == null) {
+      redirect("/login");
+    }
     const data = parseClientFormData(formData);
     const updated = await updateClient(
-      currentUser.orgId,
+      currentOrgId,
       params.clientId,
       data
     );
