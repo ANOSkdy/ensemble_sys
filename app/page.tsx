@@ -58,7 +58,6 @@ async function fetchRecentRuns(orgId: number): Promise<RecentRun[]> {
 export default async function HomePage() {
   let dbStatus: "ready" | "missing" | "unavailable" = "ready";
   let sessionEmail: string | null = null;
-  let authMissing = false;
   let counts: SummaryCounts = {
     openTodos: 0,
     inProgressTodos: 0,
@@ -94,7 +93,6 @@ export default async function HomePage() {
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHENTICATED") {
       sessionEmail = null;
-      authMissing = true;
     } else {
       dbStatus = "unavailable";
     }
@@ -175,17 +173,6 @@ export default async function HomePage() {
             )}
           </div>
         </section>
-        {authMissing ? (
-          <section className="card">
-            <h2>ログインが必要です</h2>
-            <p>
-              セッションが確認できませんでした。再度ログインしてください。
-            </p>
-            <Link href="/login" className="button-link">
-              ログイン画面へ
-            </Link>
-          </section>
-        ) : null}
         <section className="card">
           <h2>サマリー</h2>
           {dbStatus === "missing" ? (
