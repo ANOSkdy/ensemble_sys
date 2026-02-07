@@ -52,7 +52,14 @@ export async function loginAction(
       email: user.email
     });
     const forwardedProto = headers().get("x-forwarded-proto");
-    const secure = forwardedProto ? forwardedProto === "https" : undefined;
+    const origin = headers().get("origin") ?? headers().get("referer");
+    const secure = forwardedProto
+      ? forwardedProto === "https"
+      : origin?.startsWith("https://")
+        ? true
+        : origin?.startsWith("http://")
+          ? false
+          : undefined;
     cookies().set(
       SESSION_COOKIE_NAME,
       token,
