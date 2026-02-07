@@ -107,16 +107,72 @@ export default async function HomePage() {
   return (
     <main>
       <div className="container">
-        <section className="card">
-          <h1>運用ダッシュボード</h1>
-          <p>ToDo、Run、鮮度の状態をひと目で確認できます。</p>
-          <div className="actions">
-            {sessionEmail ? <span>ログイン中: {sessionEmail}</span> : null}
-            <form action="/api/auth/logout" method="post">
-              <button type="submit" className="secondary">
-                ログアウト
-              </button>
-            </form>
+        <section className="card hero">
+          <div className="hero-grid">
+            <div>
+              <h1>運用ダッシュボード</h1>
+              <p>
+                ToDo、Run、鮮度の状態をひと目で把握し、次のアクションをスムーズに。
+              </p>
+              <div className="actions">
+                {sessionEmail ? (
+                  <span className="icon-chip">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="8" r="4" stroke="currentColor" />
+                      <path
+                        d="M4 20c2.5-4 13.5-4 16 0"
+                        stroke="currentColor"
+                      />
+                    </svg>
+                    ログイン中: {sessionEmail}
+                  </span>
+                ) : null}
+                <form action="/api/auth/logout" method="post">
+                  <button type="submit" className="secondary">
+                    ログアウト
+                  </button>
+                </form>
+              </div>
+            </div>
+            <div className="hero-art">
+              <div className="hero-illustration">
+                <div className="character" aria-hidden="true" />
+                <div>
+                  <div className="icon-chip">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect
+                        x="4"
+                        y="4"
+                        width="16"
+                        height="16"
+                        rx="4"
+                        stroke="currentColor"
+                      />
+                      <path
+                        d="M8 12h8M8 16h5"
+                        stroke="currentColor"
+                      />
+                    </svg>
+                    今日の進捗
+                  </div>
+                  <p>小さく進めて大きく前進。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="section-divider" />
+          <div className="process-flow">
+            {["データ取得", "レビュー", "実行準備", "共有"].map(
+              (step, index) => (
+                <div key={step} className="process-step">
+                  <span>{index + 1}</span>
+                  <div>
+                    <strong>{step}</strong>
+                    <p>左から右へ進むフローで迷いません。</p>
+                  </div>
+                </div>
+              )
+            )}
           </div>
         </section>
         {authMissing ? (
@@ -152,6 +208,24 @@ export default async function HomePage() {
               </div>
             </div>
           )}
+        </section>
+        <section className="card">
+          <h2>データビュー</h2>
+          <div className="chart-grid">
+            <div className="chart-card">
+              <p className="summary-label">状態の内訳</p>
+              <div className="chart-donut" role="img" aria-label="状態の内訳" />
+            </div>
+            <div className="chart-card">
+              <p className="summary-label">更新推移</p>
+              <div className="chart-bars" role="img" aria-label="更新推移">
+                <span style={{ height: "55%" }} />
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          </div>
         </section>
         <section className="card">
           <h2>直近のRun</h2>
