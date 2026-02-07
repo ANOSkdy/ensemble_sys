@@ -94,5 +94,5 @@ export async function updateTodo(
 
 export async function deleteTodo(id: number): Promise<boolean> {
   const result = await query('DELETE FROM todos WHERE id = $1', [id]);
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }
