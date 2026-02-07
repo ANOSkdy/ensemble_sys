@@ -41,13 +41,13 @@ export async function middleware(request: NextRequest) {
       const loginUrl = new URL("/login", request.url);
       return NextResponse.redirect(loginUrl);
     }
-    return NextResponse.next();
   } catch (error) {
     if (error instanceof Error && error.message === "Missing AUTH_SECRET") {
       return NextResponse.json({ error: "Missing AUTH_SECRET" }, { status: 500 });
     }
-    return NextResponse.json({ error: "Failed to verify session" }, { status: 500 });
+    return NextResponse.next();
   }
+  return NextResponse.next();
 }
 
 export const config = {
