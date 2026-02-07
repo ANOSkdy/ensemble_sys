@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import { TodoForm } from "@/app/todo-form";
+import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import { hasDatabaseUrl } from "@/lib/db";
 import { listTodos, type Todo } from "@/lib/todos";
 
@@ -8,6 +10,17 @@ export const revalidate = 0;
 export default async function HomePage() {
   let todos: Todo[] = [];
   let dbStatus: "ready" | "missing" | "unavailable" = "ready";
+  let sessionEmail: string | null = null;
+
+  try {
+    const token = cookies().get(SESSION_COOKIE_NAME)?.value;
+    if (token) {
+      const session = await verifySessionToken(token);
+      sessionEmail = session?.email ?? null;
+    }
+  } catch {
+    sessionEmail = null;
+  }
 
   if (!hasDatabaseUrl()) {
     dbStatus = "missing";
@@ -28,6 +41,14 @@ export default async function HomePage() {
             Next.js + Neon Postgres の最小構成です。モバイルでも快適に使えるよう、
             余白とタップ領域を広めに設計しています。
           </p>
+          <div className="actions">
+            {sessionEmail ? <span>ログイン中: {sessionEmail}</span> : null}
+            <form action="/api/auth/logout" method="post">
+              <button type="submit" className="secondary">
+                ログアウト
+              </button>
+            </form>
+          </div>
         </section>
         <TodoForm />
         <section className="card">
