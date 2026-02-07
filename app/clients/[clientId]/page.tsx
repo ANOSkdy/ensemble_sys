@@ -40,7 +40,7 @@ export default async function ClientDetailPage({
   const user = await getUserOrg();
   const orgId = user.orgId;
   if (orgId == null) {
-    redirect("/login");
+    notFound();
   }
   const client = await getClient(orgId, params.clientId);
 
@@ -53,7 +53,7 @@ export default async function ClientDetailPage({
     const currentUser = await getUserOrg();
     const currentOrgId = currentUser.orgId;
     if (currentOrgId == null) {
-      redirect("/login");
+      notFound();
     }
     const data = parseClientFormData(formData);
     const updated = await updateClient(

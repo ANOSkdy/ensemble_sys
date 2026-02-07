@@ -33,7 +33,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const user = await getUserOrg();
   const orgId = user.orgId;
   if (orgId == null) {
-    redirect("/login");
+    notFound();
   }
   const query = searchParams?.q?.trim();
   const clients = await listClients(orgId, query);
@@ -43,7 +43,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     const currentUser = await getUserOrg();
     const currentOrgId = currentUser.orgId;
     if (currentOrgId == null) {
-      redirect("/login");
+      notFound();
     }
     const data = parseClientFormData(formData);
     const client = await createClient(currentOrgId, data);
