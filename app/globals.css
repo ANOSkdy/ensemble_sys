@@ -134,6 +134,12 @@ button.secondary {
   box-shadow: none;
 }
 
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .hero {
   display: grid;
   gap: 16px;
