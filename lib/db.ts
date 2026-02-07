@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { Pool } from 'pg';
+import { Pool, type QueryResultRow } from 'pg';
 
 let pool: Pool | null = null;
 
@@ -24,7 +24,10 @@ export function getPool() {
   return pool;
 }
 
-export async function query<T>(text: string, params: Array<string | number | boolean | null> = []) {
+export async function query<T extends QueryResultRow>(
+  text: string,
+  params: Array<string | number | boolean | null> = [],
+) {
   const client = getPool();
   return client.query<T>(text, params);
 }
