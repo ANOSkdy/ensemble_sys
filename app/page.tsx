@@ -173,87 +173,99 @@ export default async function HomePage() {
             )}
           </div>
         </section>
-        <section className="card">
-          <h2>サマリー</h2>
-          {dbStatus === "missing" ? (
-            <p>DATABASE_URL が未設定のため、データを取得できません。</p>
-          ) : dbStatus === "unavailable" ? (
-            <p>データベースに接続できませんでした。設定をご確認ください。</p>
-          ) : (
-            <div className="summary-grid">
-              <div className="summary-card">
-                <p className="summary-label">Open ToDo</p>
-                <p className="summary-value">{counts.openTodos}</p>
-              </div>
-              <div className="summary-card">
-                <p className="summary-label">In Progress</p>
-                <p className="summary-value">{counts.inProgressTodos}</p>
-              </div>
-              <div className="summary-card">
-                <p className="summary-label">鮮度対象</p>
-                <p className="summary-value">{counts.freshnessCandidates}</p>
-              </div>
-            </div>
-          )}
-        </section>
-        <section className="card">
-          <h2>データビュー</h2>
-          <div className="chart-grid">
-            <div className="chart-card">
-              <p className="summary-label">状態の内訳</p>
-              <div className="chart-donut" role="img" aria-label="状態の内訳" />
-            </div>
-            <div className="chart-card">
-              <p className="summary-label">更新推移</p>
-              <div className="chart-bars" role="img" aria-label="更新推移">
-                <span style={{ height: "55%" }} />
-                <span />
-                <span />
-                <span />
-              </div>
-            </div>
-          </div>
-        </section>
-        <section className="card">
-          <h2>直近のRun</h2>
-          {recentRuns.length === 0 ? (
-            <p>まだRunがありません。</p>
-          ) : (
-            <div className="list">
-              {recentRuns.map((run) => (
-                <div key={run.id} className="list-item">
-                  <div>
-                    <p className="list-title">{run.run_type}</p>
-                    <p className="list-meta">
-                      {run.status} · {run.file_format ?? "N/A"}
-                    </p>
-                  </div>
-                  <div className="list-meta">
-                    <span>{new Date(run.created_at).toLocaleString()}</span>
-                    <Link href={`/runs/${run.id}`}>詳細</Link>
-                  </div>
+        <details className="card collapsible" open>
+          <summary>サマリー</summary>
+          <div className="collapsible-body">
+            {dbStatus === "missing" ? (
+              <p>DATABASE_URL が未設定のため、データを取得できません。</p>
+            ) : dbStatus === "unavailable" ? (
+              <p>データベースに接続できませんでした。設定をご確認ください。</p>
+            ) : (
+              <div className="summary-grid">
+                <div className="summary-card">
+                  <p className="summary-label">Open ToDo</p>
+                  <p className="summary-value">{counts.openTodos}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
-        <section className="card">
-          <h2>クイックリンク</h2>
-          <div className="link-grid">
-            <Link href="/clients" className="link-card">
-              Clients
-            </Link>
-            <Link href="/jobs" className="link-card">
-              Jobs
-            </Link>
-            <Link href="/runs" className="link-card">
-              Runs
-            </Link>
-            <Link href="/todos" className="link-card">
-              Todos
-            </Link>
+                <div className="summary-card">
+                  <p className="summary-label">In Progress</p>
+                  <p className="summary-value">{counts.inProgressTodos}</p>
+                </div>
+                <div className="summary-card">
+                  <p className="summary-label">鮮度対象</p>
+                  <p className="summary-value">{counts.freshnessCandidates}</p>
+                </div>
+              </div>
+            )}
           </div>
-        </section>
+        </details>
+        <details className="card collapsible" open>
+          <summary>データビュー</summary>
+          <div className="collapsible-body">
+            <div className="chart-grid">
+              <div className="chart-card">
+                <p className="summary-label">状態の内訳</p>
+                <div
+                  className="chart-donut"
+                  role="img"
+                  aria-label="状態の内訳"
+                />
+              </div>
+              <div className="chart-card">
+                <p className="summary-label">更新推移</p>
+                <div className="chart-bars" role="img" aria-label="更新推移">
+                  <span style={{ height: "55%" }} />
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details className="card collapsible">
+          <summary>直近のRun</summary>
+          <div className="collapsible-body">
+            {recentRuns.length === 0 ? (
+              <p>まだRunがありません。</p>
+            ) : (
+              <div className="list">
+                {recentRuns.map((run) => (
+                  <div key={run.id} className="list-item">
+                    <div>
+                      <p className="list-title">{run.run_type}</p>
+                      <p className="list-meta">
+                        {run.status} · {run.file_format ?? "N/A"}
+                      </p>
+                    </div>
+                    <div className="list-meta">
+                      <span>{new Date(run.created_at).toLocaleString()}</span>
+                      <Link href={`/runs/${run.id}`}>詳細</Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </details>
+        <details className="card collapsible">
+          <summary>クイックリンク</summary>
+          <div className="collapsible-body">
+            <div className="link-grid">
+              <Link href="/clients" className="link-card">
+                Clients
+              </Link>
+              <Link href="/jobs" className="link-card">
+                Jobs
+              </Link>
+              <Link href="/runs" className="link-card">
+                Runs
+              </Link>
+              <Link href="/todos" className="link-card">
+                Todos
+              </Link>
+            </div>
+          </div>
+        </details>
       </div>
     </main>
   );
