@@ -131,6 +131,11 @@ export default async function HomePage() {
                   </button>
                 </form>
               </div>
+              <div className="tab-bar" role="tablist" aria-label="主要機能">
+                <Link href="/clients" className="tab-link" role="tab">
+                  顧客管理へ
+                </Link>
+              </div>
             </div>
             <div className="hero-art">
               <div className="hero-illustration">
