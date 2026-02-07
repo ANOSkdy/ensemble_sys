@@ -7,21 +7,51 @@ settings:
 importers:
   .:
     dependencies:
-      bcryptjs: 2.4.3
-      jose: 5.6.3
-      next: 14.2.5
-      pg: 8.12.0
-      react: 18.3.1
-      react-dom: 18.3.1
-      zod: 3.23.8
+      bcryptjs:
+        specifier: 2.4.3
+        version: 2.4.3
+      jose:
+        specifier: 5.6.3
+        version: 5.6.3
+      next:
+        specifier: 14.2.5
+        version: 14.2.5
+      pg:
+        specifier: 8.12.0
+        version: 8.12.0
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1
+      zod:
+        specifier: 3.23.8
+        version: 3.23.8
     devDependencies:
-      '@types/bcryptjs': 2.4.2
-      '@types/node': 20.14.10
-      '@types/pg': 8.11.6
-      '@types/react': 18.3.3
-      '@types/react-dom': 18.3.0
-      eslint: 8.57.0
-      eslint-config-next: 14.2.5
-      typescript: 5.5.4
+      '@types/bcryptjs':
+        specifier: 2.4.2
+        version: 2.4.2
+      '@types/node':
+        specifier: 20.14.10
+        version: 20.14.10
+      '@types/pg':
+        specifier: 8.11.6
+        version: 8.11.6
+      '@types/react':
+        specifier: 18.3.3
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: 18.3.0
+        version: 18.3.0
+      eslint:
+        specifier: 8.57.0
+        version: 8.57.0
+      eslint-config-next:
+        specifier: 14.2.5
+        version: 14.2.5
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
 
 packages: {}
