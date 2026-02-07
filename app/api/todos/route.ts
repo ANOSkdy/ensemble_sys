@@ -19,8 +19,15 @@ export async function GET(request: Request) {
   const limitResult = limitSchema.safeParse(searchParams.get("limit"));
   const limit = limitResult.success && limitResult.data ? limitResult.data : 20;
 
-  const todos = await listTodos(limit);
-  return NextResponse.json({ ok: true, todos });
+  try {
+    const todos = await listTodos(limit);
+    return NextResponse.json({ ok: true, todos });
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "DB_UNAVAILABLE" },
+      { status: 503 }
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -41,6 +48,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const todo = await createTodo(parsed.data.title);
-  return NextResponse.json({ ok: true, todo }, { status: 201 });
+  try {
+    const todo = await createTodo(parsed.data.title);
+    return NextResponse.json({ ok: true, todo }, { status: 201 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "MISSING_TODOS_TABLE") {
+      return NextResponse.json(
+        { ok: false, error: "MISSING_TODOS_TABLE" },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      { ok: false, error: "DB_UNAVAILABLE" },
+      { status: 503 }
+    );
+  }
 }

@@ -1,8 +1,23 @@
 import { TodoForm } from "@/app/todo-form";
-import { listTodos } from "@/lib/todos";
+import { hasDatabaseUrl } from "@/lib/db";
+import { listTodos, type Todo } from "@/lib/todos";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function HomePage() {
-  const todos = await listTodos(20);
+  let todos: Todo[] = [];
+  let dbStatus: "ready" | "missing" | "unavailable" = "ready";
+
+  if (!hasDatabaseUrl()) {
+    dbStatus = "missing";
+  } else {
+    try {
+      todos = await listTodos(20);
+    } catch {
+      dbStatus = "unavailable";
+    }
+  }
 
   return (
     <main>
@@ -17,7 +32,11 @@ export default async function HomePage() {
         <TodoForm />
         <section className="card">
           <h2>最新のTodo</h2>
-          {todos.length === 0 ? (
+          {dbStatus === "missing" ? (
+            <p>DATABASE_URL が未設定のため、Todo一覧は表示できません。</p>
+          ) : dbStatus === "unavailable" ? (
+            <p>データベースに接続できませんでした。設定をご確認ください。</p>
+          ) : todos.length === 0 ? (
             <p>まだTodoがありません。上のフォームから追加してください。</p>
           ) : (
             <div className="todo-list">

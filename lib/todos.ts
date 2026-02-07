@@ -19,42 +19,65 @@ export type Todo = {
   createdAt: string;
 };
 
-export async function listTodos(limit: number): Promise<Todo[]> {
-  const result = await query<{
-    id: number;
-    title: string;
-    completed: boolean;
-    created_at: string;
-  }>(
-    "SELECT id, title, completed, created_at FROM todos ORDER BY created_at DESC LIMIT $1",
-    [limit]
+export function isMissingTableError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "42P01"
   );
+}
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    completed: row.completed,
-    createdAt: row.created_at
-  }));
+export async function listTodos(limit: number): Promise<Todo[]> {
+  try {
+    const result = await query<{
+      id: number;
+      title: string;
+      completed: boolean;
+      created_at: string;
+    }>(
+      "SELECT id, title, completed, created_at FROM todos ORDER BY created_at DESC LIMIT $1",
+      [limit]
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      completed: row.completed,
+      createdAt: row.created_at
+    }));
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function createTodo(title: string): Promise<Todo> {
-  const result = await query<{
-    id: number;
-    title: string;
-    completed: boolean;
-    created_at: string;
-  }>(
-    "INSERT INTO todos (title) VALUES ($1) RETURNING id, title, completed, created_at",
-    [title]
-  );
+  try {
+    const result = await query<{
+      id: number;
+      title: string;
+      completed: boolean;
+      created_at: string;
+    }>(
+      "INSERT INTO todos (title) VALUES ($1) RETURNING id, title, completed, created_at",
+      [title]
+    );
 
-  return {
-    id: result.rows[0].id,
-    title: result.rows[0].title,
-    completed: result.rows[0].completed,
-    createdAt: result.rows[0].created_at
-  };
+    return {
+      id: result.rows[0].id,
+      title: result.rows[0].title,
+      completed: result.rows[0].completed,
+      createdAt: result.rows[0].created_at
+    };
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      throw new Error("MISSING_TODOS_TABLE");
+    }
+    throw error;
+  }
 }
 
 export async function updateTodo(
@@ -80,23 +103,37 @@ export async function updateTodo(
   }
 
   values.push(id);
-  const result = await query<{
-    id: number;
-    title: string;
-    completed: boolean;
-    created_at: string;
-  }>(
-    `UPDATE todos SET ${fields.join(", ")} WHERE id = $${index} RETURNING id, title, completed, created_at`,
-    values
-  );
+  try {
+    const result = await query<{
+      id: number;
+      title: string;
+      completed: boolean;
+      created_at: string;
+    }>(
+      `UPDATE todos SET ${fields.join(", ")} WHERE id = $${index} RETURNING id, title, completed, created_at`,
+      values
+    );
 
-  return {
-    rowCount: result.rowCount ?? 0,
-    todo: result.rows[0] ?? null
-  };
+    return {
+      rowCount: result.rowCount ?? 0,
+      todo: result.rows[0] ?? null
+    };
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return { rowCount: 0, todo: null };
+    }
+    throw error;
+  }
 }
 
 export async function deleteTodo(id: number): Promise<boolean> {
-  const result = await query("DELETE FROM todos WHERE id = $1", [id]);
-  return (result.rowCount ?? 0) > 0;
+  try {
+    const result = await query("DELETE FROM todos WHERE id = $1", [id]);
+    return (result.rowCount ?? 0) > 0;
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return false;
+    }
+    throw error;
+  }
 }
