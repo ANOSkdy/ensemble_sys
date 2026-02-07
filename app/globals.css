@@ -71,7 +71,8 @@ textarea {
   font: inherit;
 }
 
-input[type="text"] {
+input,
+textarea {
   width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
