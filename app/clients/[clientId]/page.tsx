@@ -38,7 +38,11 @@ export default async function ClientDetailPage({
   }
 
   const user = await getUserOrg();
-  const client = await getClient(user.orgId, params.clientId);
+  const orgId = user.orgId;
+  if (orgId == null) {
+    redirect("/login");
+  }
+  const client = await getClient(orgId, params.clientId);
 
   if (!client) {
     notFound();
