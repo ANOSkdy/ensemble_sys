@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/server/auth";
 import { listClients } from "@/lib/clients";
 import { ClientForm } from "@/app/clients/client-form";
@@ -8,7 +9,15 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ClientsPage() {
-  const user = await requireUser();
+  let user;
+  try {
+    user = await requireUser();
+  } catch (error) {
+    if (error instanceof Error && error.message === "UNAUTHENTICATED") {
+      redirect("/login");
+    }
+    throw error;
+  }
 
   if (user.orgId === null) {
     return (
