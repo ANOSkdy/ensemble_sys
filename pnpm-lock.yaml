@@ -1689,6 +1689,8 @@ snapshots:
 
   '@eslint-community/regexpp@4.12.2': {}
 
+  '@vercel/blob@0.27.0': {}
+
   '@eslint/eslintrc@2.1.4':
     dependencies:
       ajv: 6.12.6
@@ -2400,6 +2402,8 @@ snapshots:
       estraverse: 5.3.0
 
   eslint-visitor-keys@3.4.3: {}
+
+  exceljs@4.4.0: {}
 
   eslint@8.57.0:
     dependencies:
