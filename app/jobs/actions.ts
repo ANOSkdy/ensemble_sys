@@ -48,7 +48,7 @@ export async function createJobAction(
 
     await createJob(user.orgId, parsed.data);
     revalidatePath("/jobs");
-    revalidatePath(`/clients/${parsed.data.clientId}/jobs`);
+    revalidatePath(`/home/${parsed.data.clientId}/jobs`);
     redirect("/jobs");
   } catch (error) {
     if (error instanceof Error && error.message === "MISSING_JOBS_TABLE") {

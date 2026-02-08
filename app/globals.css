@@ -62,14 +62,21 @@ main {
 
 .app-shell {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  position: relative;
   background: transparent;
 }
 
+.nav-toggle {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .sidebar {
-  position: sticky;
+  position: fixed;
+  left: 0;
   top: 0;
+  width: 240px;
   height: 100vh;
   padding: 28px 20px;
   display: flex;
@@ -78,10 +85,74 @@ main {
   background: var(--surface);
   border-right: 1px solid var(--border);
   backdrop-filter: blur(20px);
+  transform: translateX(-110%);
+  transition: transform 0.25s ease;
+  z-index: 20;
+}
+
+.nav-toggle:checked ~ .sidebar {
+  transform: translateX(0);
+}
+
+.nav-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 14, 38, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.nav-toggle:checked ~ .nav-scrim {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .app-main {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.top-bar-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nav-toggle-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-direction: column;
+  cursor: pointer;
+  background: var(--surface-muted);
+}
+
+.nav-toggle-button span {
+  width: 18px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 999px;
 }
 
 .brand {

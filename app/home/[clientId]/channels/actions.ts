@@ -59,7 +59,7 @@ export async function upsertChannelAccountAction(
       return { ok: false, message: "クライアントが見つかりません。" };
     }
 
-    revalidatePath(`/clients/${clientId}/channels`);
+    revalidatePath(`/home/${clientId}/channels`);
 
     // managementUrl が空 or 無効URLでも保存自体は成功しているので、ここで失敗扱いにしない
     const urlStr = parsed.data.managementUrl?.trim?.() ?? "";

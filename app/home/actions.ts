@@ -51,8 +51,8 @@ export async function createClientAction(
       return { ok: false, message: "組織情報が見つかりません。" };
     }
     const client = await createClient(user.orgId, parsed.data);
-    revalidatePath("/clients");
-    redirect(`/clients/${client.id}`);
+    revalidatePath("/home");
+    redirect(`/home/${client.id}`);
   } catch (error) {
     if (error instanceof Error && error.message === "MISSING_CLIENTS_TABLE") {
       return {
@@ -108,7 +108,7 @@ export async function updateClientAction(
     if (!updated) {
       return { ok: false, message: "クライアントが見つかりません。" };
     }
-    revalidatePath(`/clients/${clientId}`);
+    revalidatePath(`/home/${clientId}`);
     return { ok: true, message: "更新しました。" };
   } catch (error) {
     return { ok: false, message: "更新に失敗しました。" };

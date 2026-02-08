@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/server/auth";
 import { clientIdSchema, getClient } from "@/lib/clients";
-import { ClientForm } from "@/app/clients/client-form";
-import { updateClientAction } from "@/app/clients/actions";
+import { ClientForm } from "@/app/home/client-form";
+import { updateClientAction } from "@/app/home/actions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -47,7 +47,7 @@ export default async function ClientDetailPage({
               <p className="summary-label">クライアント詳細</p>
               <h1>{client.name}</h1>
             </div>
-            <Link href="/clients" className="secondary-link">
+            <Link href="/home" className="secondary-link">
               一覧へ戻る
             </Link>
           </div>
@@ -74,16 +74,16 @@ export default async function ClientDetailPage({
         <section className="card">
           <h2>次の管理へ</h2>
           <div className="link-grid">
-            <Link href={`/clients/${client.id}/channels`} className="link-card">
+            <Link href={`/home/${client.id}/channels`} className="link-card">
               媒体チャネル管理
             </Link>
             <Link
-              href={`/clients/${client.id}/locations`}
+              href={`/home/${client.id}/locations`}
               className="link-card"
             >
               勤務地・拠点管理
             </Link>
-            <Link href={`/clients/${client.id}/jobs`} className="link-card">
+            <Link href={`/home/${client.id}/jobs`} className="link-card">
               求人管理
             </Link>
           </div>

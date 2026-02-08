@@ -2,8 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/server/auth";
 import { listClients } from "@/lib/clients";
-import { ClientForm } from "@/app/clients/client-form";
-import { createClientAction } from "@/app/clients/actions";
+import { ClientForm } from "@/app/home/client-form";
+import { createClientAction } from "@/app/home/actions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -41,10 +41,16 @@ export default async function ClientsPage() {
           <h1>顧客管理</h1>
           <p>CRM の起点となる顧客一覧です。最小情報で登録できます。</p>
         </section>
-        <section>
-          <h2>新規クライアント</h2>
-          <ClientForm action={createClientAction} submitLabel="クライアントを作成" />
-        </section>
+        <details className="card collapsible">
+          <summary>新規クライアント</summary>
+          <div className="collapsible-body">
+            <p>必要最低限の情報でクライアント登録を進められます。</p>
+            <ClientForm
+              action={createClientAction}
+              submitLabel="クライアントを作成"
+            />
+          </div>
+        </details>
         <section className="card">
           <h2>クライアント一覧</h2>
           {clients.length === 0 ? (
@@ -59,7 +65,7 @@ export default async function ClientsPage() {
                       {client.industry ?? "業種未設定"} · {client.timezone}
                     </p>
                   </div>
-                  <Link href={`/clients/${client.id}`}>詳細を見る</Link>
+                  <Link href={`/home/${client.id}`}>詳細を見る</Link>
                 </li>
               ))}
             </ul>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import type { ChannelAccountFormState } from "@/app/clients/[clientId]/channels/actions";
+import type { ChannelAccountFormState } from "@/app/home/[clientId]/channels/actions";
 
 const initialState: ChannelAccountFormState = { ok: true };
 

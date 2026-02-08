@@ -202,7 +202,7 @@ export default async function ClientJobsPage({
                   {jobs.map((job) => (
                     <tr key={job.id}>
                       <td>
-                        <Link href={`/clients/${job.clientId}`}>
+                        <Link href={`/home/${job.clientId}`}>
                           {job.clientName}
                         </Link>
                       </td>

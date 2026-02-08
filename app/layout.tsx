@@ -16,6 +16,12 @@ export default function RootLayout({
     <html lang="ja">
       <body>
         <div className="app-shell">
+          <input
+            type="checkbox"
+            id="nav-toggle"
+            className="nav-toggle"
+            aria-hidden="true"
+          />
           <aside className="sidebar">
             <div className="brand">
               <div className="brand-mark">E</div>
@@ -25,16 +31,6 @@ export default function RootLayout({
               </div>
             </div>
             <nav className="nav">
-              <Link href="/" className="nav-link">
-                <svg
-                  className="line-icon"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path d="M4 10.5 12 4l8 6.5v8a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" />
-                </svg>
-                Dashboard
-              </Link>
               <Link href="/todos" className="nav-link">
                 <svg
                   className="line-icon"
@@ -68,7 +64,7 @@ export default function RootLayout({
                 </svg>
                 Jobs
               </Link>
-              <Link href="/clients" className="nav-link">
+              <Link href="/home" className="nav-link">
                 <svg
                   className="line-icon"
                   viewBox="0 0 24 24"
@@ -77,7 +73,7 @@ export default function RootLayout({
                   <circle cx="12" cy="8" r="4" />
                   <path d="M4 20c2.5-4 13.5-4 16 0" />
                 </svg>
-                Clients
+                Home
               </Link>
             </nav>
             <div className="sidebar-footer">
@@ -85,7 +81,22 @@ export default function RootLayout({
               <p>Dark/Light 自動切替</p>
             </div>
           </aside>
-          <div className="app-main">{children}</div>
+          <label htmlFor="nav-toggle" className="nav-scrim" aria-hidden="true" />
+          <div className="app-main">
+            <header className="top-bar">
+              <label
+                htmlFor="nav-toggle"
+                className="nav-toggle-button"
+                aria-label="メニューを開閉"
+              >
+                <span />
+                <span />
+                <span />
+              </label>
+              <div className="top-bar-title">Ensemble Ops Console</div>
+            </header>
+            {children}
+          </div>
         </div>
       </body>
     </html>
