@@ -135,6 +135,9 @@ export default async function JobDetailPage({
               <Link href={`/jobs/${job.id}/edit`} className="secondary-link">
                 編集
               </Link>
+              <Link href={`/jobs/${job.id}/ai`} className="secondary-link">
+                AI提案
+              </Link>
               <Link href={`/jobs/${job.id}/revisions`} className="secondary-link">
                 revisions
               </Link>
