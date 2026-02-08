@@ -30,7 +30,7 @@ export async function loginAction(
 
   try {
     const result = await query<{
-      id: number;
+      id: string;
       email: string;
       password_hash: string;
     }>("SELECT id, email, password_hash FROM users WHERE email = $1 LIMIT 1", [
@@ -48,9 +48,10 @@ export async function loginAction(
     }
 
     const token = await signSessionToken({
-      sub: String(user.id),
+      sub: user.id, // UUID string
       email: user.email
     });
+
     const forwardedProto = headers().get("x-forwarded-proto");
     const origin = headers().get("origin") ?? headers().get("referer");
     const secure = forwardedProto
@@ -60,6 +61,7 @@ export async function loginAction(
         : origin?.startsWith("http://")
           ? false
           : undefined;
+
     cookies().set(
       SESSION_COOKIE_NAME,
       token,

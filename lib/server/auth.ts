@@ -5,8 +5,8 @@ import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import { query } from "@/lib/db";
 
 export type AuthenticatedUser = {
-  userId: number;
-  orgId: number | null;
+  userId: string; // UUID
+  orgId: string | null; // UUID or null
   email: string;
 };
 
@@ -21,15 +21,15 @@ export async function requireUser(): Promise<AuthenticatedUser> {
     throw new Error("UNAUTHENTICATED");
   }
 
-  const userId = Number(session.sub);
-  if (!Number.isFinite(userId)) {
+  const userId = session.sub; // UUID string
+  if (!userId) {
     throw new Error("UNAUTHENTICATED");
   }
 
   const result = await query<{
-    id: number;
+    id: string;
     email: string;
-    org_id: number | null;
+    org_id: string | null;
   }>("SELECT id, email, org_id FROM users WHERE id = $1 LIMIT 1", [userId]);
 
   const user = result.rows[0];
