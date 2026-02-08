@@ -5,7 +5,7 @@ export const revalidate = 0;
 
 export default function LoginPage() {
   return (
-    <main>
+    <main className="login-page">
       <div className="container">
         <LoginForm />
       </div>

@@ -109,6 +109,12 @@ main {
   pointer-events: auto;
 }
 
+body:has(.login-page) .top-bar,
+body:has(.login-page) .nav-scrim,
+body:has(.login-page) .nav-toggle-button {
+  display: none;
+}
+
 .app-main {
   min-width: 0;
   display: flex;
