@@ -1,0 +1,228 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { requireUser } from "@/lib/server/auth";
+import { hasDatabaseUrl } from "@/lib/db";
+import { clientIdSchema, getClient } from "@/lib/clients";
+import { jobStatusSchema, listJobs } from "@/lib/jobs";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+type SearchParams = {
+  q?: string;
+  status?: string;
+  has_job_offer_id?: string;
+  refresh_candidate?: string;
+};
+
+function formatDate(value: string | null): string {
+  if (!value) {
+    return "—";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+  return date.toLocaleDateString("ja-JP");
+}
+
+export default async function ClientJobsPage({
+  params,
+  searchParams
+}: {
+  params: { clientId: string };
+  searchParams?: SearchParams;
+}) {
+  const parsedClientId = clientIdSchema.safeParse(params.clientId);
+  if (!parsedClientId.success) {
+    notFound();
+  }
+
+  let user;
+  try {
+    user = await requireUser();
+  } catch (error) {
+    if (error instanceof Error && error.message === "UNAUTHENTICATED") {
+      redirect("/login");
+    }
+    throw error;
+  }
+
+  if (user.orgId === null) {
+    return (
+      <main>
+        <div className="container">
+          <section className="card">
+            <h1>顧客別求人</h1>
+            <p>組織情報が見つかりません。</p>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (!hasDatabaseUrl()) {
+    return (
+      <main>
+        <div className="container">
+          <section className="card">
+            <h1>顧客別求人</h1>
+            <p>DATABASE_URL が未設定のため、求人を表示できません。</p>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  const client = await getClient(user.orgId, parsedClientId.data);
+  if (!client) {
+    notFound();
+  }
+
+  const rawSearch = typeof searchParams?.q === "string" ? searchParams.q : "";
+  const statusValue =
+    typeof searchParams?.status === "string" ? searchParams.status : "";
+  const hasJobOfferIdValue =
+    typeof searchParams?.has_job_offer_id === "string"
+      ? searchParams.has_job_offer_id
+      : "";
+  const refreshCandidateValue =
+    typeof searchParams?.refresh_candidate === "string"
+      ? searchParams.refresh_candidate
+      : "";
+
+  const statusFilter = jobStatusSchema.safeParse(statusValue).success
+    ? (statusValue as "active" | "archived")
+    : undefined;
+
+  const hasJobOfferIdFilter =
+    hasJobOfferIdValue === "yes" || hasJobOfferIdValue === "no"
+      ? hasJobOfferIdValue
+      : undefined;
+
+  const refreshCandidateFilter =
+    refreshCandidateValue === "yes" || refreshCandidateValue === "no"
+      ? refreshCandidateValue
+      : undefined;
+
+  const jobs = await listJobs({
+    orgId: user.orgId,
+    clientId: client.id,
+    search: rawSearch,
+    status: statusFilter,
+    hasJobOfferId: hasJobOfferIdFilter,
+    refreshCandidate: refreshCandidateFilter
+  });
+
+  return (
+    <main>
+      <div className="container">
+        <section className="card">
+          <div className="card-header">
+            <div>
+              <h1>顧客別求人</h1>
+              <p>{client.name} の求人を確認できます。</p>
+            </div>
+            <Link href="/jobs/new" className="secondary-link">
+              Create Job
+            </Link>
+          </div>
+        </section>
+        <section className="card">
+          <h2>検索・フィルタ</h2>
+          <form method="get" className="form-grid">
+            <div>
+              <label htmlFor="search">検索</label>
+              <input
+                id="search"
+                name="q"
+                type="search"
+                placeholder="求人名"
+                defaultValue={rawSearch}
+              />
+            </div>
+            <div>
+              <label htmlFor="status">ステータス</label>
+              <select id="status" name="status" defaultValue={statusValue}>
+                <option value="">すべて</option>
+                <option value="active">active</option>
+                <option value="archived">archived</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="has_job_offer_id">Job Offer ID</label>
+              <select
+                id="has_job_offer_id"
+                name="has_job_offer_id"
+                defaultValue={hasJobOfferIdValue}
+              >
+                <option value="">すべて</option>
+                <option value="yes">あり</option>
+                <option value="no">なし</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="refresh_candidate">Refresh Candidate</label>
+              <select
+                id="refresh_candidate"
+                name="refresh_candidate"
+                defaultValue={refreshCandidateValue}
+              >
+                <option value="">すべて</option>
+                <option value="yes">yes</option>
+                <option value="no">no</option>
+              </select>
+            </div>
+            <div>
+              <label aria-hidden="true" style={{ visibility: "hidden" }}>
+                Submit
+              </label>
+              <button type="submit">絞り込み</button>
+            </div>
+          </form>
+        </section>
+        <section className="card">
+          <h2>求人リスト</h2>
+          {jobs.length === 0 ? (
+            <p>該当する求人がありません。</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Job</th>
+                    <th>Status</th>
+                    <th>Job Offer ID</th>
+                    <th>Freshness</th>
+                    <th>Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobs.map((job) => (
+                    <tr key={job.id}>
+                      <td>
+                        <Link href={`/clients/${job.clientId}`}>
+                          {job.clientName}
+                        </Link>
+                      </td>
+                      <td>
+                        <Link href={`/jobs/${job.id}`}>
+                          {job.internalTitle}
+                        </Link>
+                      </td>
+                      <td>{job.status}</td>
+                      <td>{job.jobOfferId ?? "—"}</td>
+                      <td>{formatDate(job.freshnessExpiresAt)}</td>
+                      <td>{formatDate(job.updatedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
