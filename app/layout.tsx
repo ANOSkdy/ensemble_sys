@@ -31,6 +31,17 @@ export default function RootLayout({
               </div>
             </div>
             <nav className="nav">
+              <Link href="/home" className="nav-link">
+                <svg
+                  className="line-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c2.5-4 13.5-4 16 0" />
+                </svg>
+                Home
+              </Link>
               <Link href="/todos" className="nav-link">
                 <svg
                   className="line-icon"
@@ -64,22 +75,7 @@ export default function RootLayout({
                 </svg>
                 Jobs
               </Link>
-              <Link href="/home" className="nav-link">
-                <svg
-                  className="line-icon"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c2.5-4 13.5-4 16 0" />
-                </svg>
-                Home
-              </Link>
             </nav>
-            <div className="sidebar-footer">
-              <span className="status-dot" aria-hidden="true" />
-              <p>Dark/Light 自動切替</p>
-            </div>
           </aside>
           <label htmlFor="nav-toggle" className="nav-scrim" aria-hidden="true" />
           <div className="app-main">
