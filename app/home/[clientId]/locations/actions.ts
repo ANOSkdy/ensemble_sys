@@ -63,7 +63,7 @@ export async function createLocationAction(
       return { ok: false, message: "クライアントが見つかりません。" };
     }
 
-    revalidatePath(`/clients/${clientId}/locations`);
+    revalidatePath(`/home/${clientId}/locations`);
     return { ok: true, message: "登録しました。" };
   } catch (error) {
     if (error instanceof Error) {
@@ -133,7 +133,7 @@ export async function updateLocationAction(
       return { ok: false, message: "勤務地情報が見つかりません。" };
     }
 
-    revalidatePath(`/clients/${clientId}/locations`);
+    revalidatePath(`/home/${clientId}/locations`);
     return { ok: true, message: "更新しました。" };
   } catch (error) {
     return { ok: false, message: "更新に失敗しました。" };
@@ -176,7 +176,7 @@ export async function deleteLocationAction(
       return { ok: false, message: "勤務地情報が見つかりません。" };
     }
 
-    revalidatePath(`/clients/${clientId}/locations`);
+    revalidatePath(`/home/${clientId}/locations`);
     return { ok: true, message: "削除しました。" };
   } catch (error) {
     return { ok: false, message: "削除に失敗しました。" };

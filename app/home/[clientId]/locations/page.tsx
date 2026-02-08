@@ -7,11 +7,11 @@ import {
   createLocationAction,
   deleteLocationAction,
   updateLocationAction
-} from "@/app/clients/[clientId]/locations/actions";
+} from "@/app/home/[clientId]/locations/actions";
 import {
   LocationCreateForm,
   LocationEditForm
-} from "@/app/clients/[clientId]/locations/location-forms";
+} from "@/app/home/[clientId]/locations/location-forms";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,7 +58,7 @@ export default async function ClientLocationsPage({
               <p className="summary-label">勤務地・拠点管理</p>
               <h1>{client.name}</h1>
             </div>
-            <Link href={`/clients/${client.id}`} className="secondary-link">
+            <Link href={`/home/${client.id}`} className="secondary-link">
               クライアントへ戻る
             </Link>
           </div>
@@ -79,7 +79,7 @@ export default async function ClientLocationsPage({
         <section>
           <div className="card-header">
             <h2>登録済み勤務地</h2>
-            <Link href={`/clients/${client.id}/jobs`} className="button-link">
+            <Link href={`/home/${client.id}/jobs`} className="button-link">
               求人管理へ進む
             </Link>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import type { LocationFormState } from "@/app/clients/[clientId]/locations/actions";
+import type { LocationFormState } from "@/app/home/[clientId]/locations/actions";
 
 const initialState: LocationFormState = { ok: true };
 

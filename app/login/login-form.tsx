@@ -5,17 +5,9 @@ import { loginAction, type LoginState } from "@/app/login/actions";
 
 const initialState: LoginState = { ok: true };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" disabled={pending} aria-disabled={pending}>
-      {pending ? "認証中..." : "ログイン"}
-    </button>
-  );
-}
-
 export function LoginForm() {
-  const [state, formAction] = useFormState(loginAction, initialState);
+  const [, formAction] = useFormState(loginAction, initialState);
+  const { pending } = useFormStatus();
 
   return (
     <form className="card" action={formAction}>
@@ -39,12 +31,9 @@ export function LoginForm() {
           required
         />
       </div>
-      <SubmitButton />
-      {state.message ? (
-        <p role="status" aria-live="polite">
-          {state.message}
-        </p>
-      ) : null}
+      <button type="submit" disabled={pending} aria-disabled={pending}>
+        {pending ? "サインイン中..." : "サインイン"}
+      </button>
     </form>
   );
 }

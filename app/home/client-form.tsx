@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import type { ClientFormState } from "@/app/clients/actions";
+import type { ClientFormState } from "@/app/home/actions";
 
 const initialState: ClientFormState = { ok: true };
 

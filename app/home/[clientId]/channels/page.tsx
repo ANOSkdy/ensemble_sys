@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/server/auth";
 import { clientIdSchema, getClient } from "@/lib/clients";
 import { getChannelAccount } from "@/lib/channel-accounts";
-import { ChannelAccountForm } from "@/app/clients/[clientId]/channels/channel-account-form";
-import { upsertChannelAccountAction } from "@/app/clients/[clientId]/channels/actions";
+import { ChannelAccountForm } from "@/app/home/[clientId]/channels/channel-account-form";
+import { upsertChannelAccountAction } from "@/app/home/[clientId]/channels/actions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,7 +51,7 @@ export default async function ClientChannelsPage({
               <p className="summary-label">媒体チャネル管理</p>
               <h1>{client.name}</h1>
             </div>
-            <Link href={`/clients/${client.id}`} className="secondary-link">
+            <Link href={`/home/${client.id}`} className="secondary-link">
               クライアントへ戻る
             </Link>
           </div>
