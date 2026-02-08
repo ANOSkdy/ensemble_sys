@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { hasDatabaseUrl } from "@/lib/db";
+import { hasDatabaseUrl, query } from "@/lib/db";
 import { isMissingTableError } from "@/lib/todos";
-import { query } from "@/lib/db";
 import { requireUser } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +20,7 @@ type RecentRun = {
   created_at: string;
 };
 
-async function fetchCount(
-  text: string,
-  params: unknown[]
-): Promise<number> {
+async function fetchCount(text: string, params: unknown[]): Promise<number> {
   try {
     const result = await query<{ count: string }>(text, params);
     return Number(result.rows[0]?.count ?? 0);
@@ -36,7 +32,7 @@ async function fetchCount(
   }
 }
 
-async function fetchRecentRuns(orgId: number): Promise<RecentRun[]> {
+async function fetchRecentRuns(orgId: string): Promise<RecentRun[]> {
   try {
     const result = await query<RecentRun>(
       `SELECT id, run_type, status, file_format, created_at
@@ -68,6 +64,7 @@ export default async function HomePage() {
   try {
     const user = await requireUser();
     sessionEmail = user.email;
+
     if (hasDatabaseUrl() && user.orgId !== null) {
       const [openTodos, inProgressTodos, freshnessCandidates, runs] =
         await Promise.all([
@@ -87,6 +84,7 @@ export default async function HomePage() {
           ),
           fetchRecentRuns(user.orgId)
         ]);
+
       counts = { openTodos, inProgressTodos, freshnessCandidates };
       recentRuns = runs;
     }
@@ -108,10 +106,9 @@ export default async function HomePage() {
         <section className="card hero">
           <div className="hero-grid">
             <div>
-              <h1>運用ダッシュボード</h1>
-              <p>
-                ToDo、Run、鮮度の状態をひと目で把握し、次のアクションをスムーズに。
-              </p>
+              <h1>ダッシュボード</h1>
+              <p>ToDo / Runs など、主要データの状況をまとめて表示します。</p>
+
               <div className="actions">
                 {sessionEmail ? (
                   <span className="icon-chip">
@@ -125,18 +122,21 @@ export default async function HomePage() {
                     ログイン中: {sessionEmail}
                   </span>
                 ) : null}
+
                 <form action="/api/auth/logout" method="post">
                   <button type="submit" className="secondary">
                     ログアウト
                   </button>
                 </form>
               </div>
-              <div className="tab-bar" role="tablist" aria-label="主要機能">
+
+              <div className="tab-bar" role="tablist" aria-label="主要リンク">
                 <Link href="/clients" className="tab-link" role="tab">
                   顧客管理へ
                 </Link>
               </div>
             </div>
+
             <div className="hero-art">
               <div className="hero-illustration">
                 <div className="character" aria-hidden="true" />
@@ -151,40 +151,38 @@ export default async function HomePage() {
                         rx="4"
                         stroke="currentColor"
                       />
-                      <path
-                        d="M8 12h8M8 16h5"
-                        stroke="currentColor"
-                      />
+                      <path d="M8 12h8M8 16h5" stroke="currentColor" />
                     </svg>
-                    今日の進捗
+                    今日のステータス
                   </div>
-                  <p>小さく進めて大きく前進。</p>
+                  <p>運用状況をざっくり把握できます。</p>
                 </div>
               </div>
             </div>
           </div>
+
           <div className="section-divider" />
+
           <div className="process-flow">
-            {["データ取得", "レビュー", "実行準備", "共有"].map(
-              (step, index) => (
-                <div key={step} className="process-step">
-                  <span>{index + 1}</span>
-                  <div>
-                    <strong>{step}</strong>
-                    <p>左から右へ進むフローで迷いません。</p>
-                  </div>
+            {["データ確認", "レポート", "改善", "運用"].map((step, index) => (
+              <div key={step} className="process-step">
+                <span>{index + 1}</span>
+                <div>
+                  <strong>{step}</strong>
+                  <p>必要に応じて画面から次の作業へ進めます。</p>
                 </div>
-              )
-            )}
+              </div>
+            ))}
           </div>
         </section>
+
         <details className="card collapsible" open>
           <summary>サマリー</summary>
           <div className="collapsible-body">
             {dbStatus === "missing" ? (
-              <p>DATABASE_URL が未設定のため、データを取得できません。</p>
+              <p>DATABASE_URL が未設定のため、データ取得できません。</p>
             ) : dbStatus === "unavailable" ? (
-              <p>データベースに接続できませんでした。設定をご確認ください。</p>
+              <p>データベースに接続できませんでした。設定を確認してください。</p>
             ) : (
               <div className="summary-grid">
                 <div className="summary-card">
@@ -203,35 +201,12 @@ export default async function HomePage() {
             )}
           </div>
         </details>
-        <details className="card collapsible" open>
-          <summary>データビュー</summary>
-          <div className="collapsible-body">
-            <div className="chart-grid">
-              <div className="chart-card">
-                <p className="summary-label">状態の内訳</p>
-                <div
-                  className="chart-donut"
-                  role="img"
-                  aria-label="状態の内訳"
-                />
-              </div>
-              <div className="chart-card">
-                <p className="summary-label">更新推移</p>
-                <div className="chart-bars" role="img" aria-label="更新推移">
-                  <span style={{ height: "55%" }} />
-                  <span />
-                  <span />
-                  <span />
-                </div>
-              </div>
-            </div>
-          </div>
-        </details>
+
         <details className="card collapsible">
-          <summary>直近のRun</summary>
+          <summary>最近の Run</summary>
           <div className="collapsible-body">
             {recentRuns.length === 0 ? (
-              <p>まだRunがありません。</p>
+              <p>まだ Run がありません。</p>
             ) : (
               <div className="list">
                 {recentRuns.map((run) => (
@@ -239,7 +214,7 @@ export default async function HomePage() {
                     <div>
                       <p className="list-title">{run.run_type}</p>
                       <p className="list-meta">
-                        {run.status} · {run.file_format ?? "N/A"}
+                        {run.status} / {run.file_format ?? "N/A"}
                       </p>
                     </div>
                     <div className="list-meta">
@@ -252,6 +227,7 @@ export default async function HomePage() {
             )}
           </div>
         </details>
+
         <details className="card collapsible">
           <summary>クイックリンク</summary>
           <div className="collapsible-body">

@@ -19,19 +19,14 @@ export const clientInputSchema = z.object({
   industry: optionalTextSchema,
   ownerName: optionalTextSchema,
   notes: optionalTextSchema,
-  timezone: z
-    .string()
-    .trim()
-    .min(1)
-    .max(100)
-    .default("Asia/Tokyo")
+  timezone: z.string().trim().min(1).max(100).default("Asia/Tokyo")
 });
 
 export type ClientInput = z.infer<typeof clientInputSchema>;
 
 export type Client = {
   id: string;
-  orgId: number;
+  orgId: string; // UUID
   name: string;
   industry: string | null;
   ownerName: string | null;
@@ -52,7 +47,7 @@ export function isMissingTableError(error: unknown): boolean {
 
 function mapClient(row: {
   id: string;
-  org_id: number;
+  org_id: string;
   name: string;
   industry: string | null;
   owner_name: string | null;
@@ -75,7 +70,7 @@ function mapClient(row: {
 }
 
 export async function listClients(
-  orgId: number,
+  orgId: string,
   search?: string
 ): Promise<Client[]> {
   const trimmed = search?.trim();
@@ -90,7 +85,7 @@ export async function listClients(
   try {
     const result = await query<{
       id: string;
-      org_id: number;
+      org_id: string;
       name: string;
       industry: string | null;
       owner_name: string | null;
@@ -116,13 +111,13 @@ export async function listClients(
 }
 
 export async function createClient(
-  orgId: number,
+  orgId: string,
   data: ClientInput
 ): Promise<Client> {
   try {
     const result = await query<{
       id: string;
-      org_id: number;
+      org_id: string;
       name: string;
       industry: string | null;
       owner_name: string | null;
@@ -154,13 +149,13 @@ export async function createClient(
 }
 
 export async function getClient(
-  orgId: number,
+  orgId: string,
   clientId: string
 ): Promise<Client | null> {
   try {
     const result = await query<{
       id: string;
-      org_id: number;
+      org_id: string;
       name: string;
       industry: string | null;
       owner_name: string | null;
@@ -187,14 +182,14 @@ export async function getClient(
 }
 
 export async function updateClient(
-  orgId: number,
+  orgId: string,
   clientId: string,
   data: ClientInput
 ): Promise<Client | null> {
   try {
     const result = await query<{
       id: string;
-      org_id: number;
+      org_id: string;
       name: string;
       industry: string | null;
       owner_name: string | null;
