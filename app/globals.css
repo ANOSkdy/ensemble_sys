@@ -1004,20 +1004,20 @@ button.secondary {
   }
 
   .sidebar {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+    position: fixed;
+    height: 100vh;
+    width: min(80vw, 280px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
   }
 
   .nav {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
   }
 
   .nav-link {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
   }
 
   .sidebar-footer {
