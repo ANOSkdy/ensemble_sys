@@ -76,6 +76,11 @@ export default function RootLayout({
                 Jobs
               </Link>
             </nav>
+            <form action="/api/auth/logout" method="post">
+              <button type="submit" className="nav-logout">
+                Sign out
+              </button>
+            </form>
           </aside>
           <label htmlFor="nav-toggle" className="nav-scrim" aria-hidden="true" />
           <div className="app-main">

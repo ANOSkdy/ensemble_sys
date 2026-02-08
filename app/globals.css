@@ -207,6 +207,23 @@ main {
   transform: translateX(2px);
 }
 
+.nav-logout {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(105, 121, 248, 0.3);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.nav-logout:hover {
+  background: rgba(105, 121, 248, 0.15);
+  transform: translateX(2px);
+}
+
 .sidebar-footer {
   margin-top: auto;
   display: flex;
