@@ -117,7 +117,8 @@ export function isMissingTableError(error: unknown): boolean {
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
-    (error as { code?: string }).code === "42P01"
+    ((error as { code?: string }).code === "42P01" ||
+      (error as { code?: string }).code === "42703")
   );
 }
 
