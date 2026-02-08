@@ -202,7 +202,7 @@ export async function deleteLocation(
       [orgId, clientId, locationId]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   } catch (error) {
     if (isMissingTableError(error)) {
       return false;
