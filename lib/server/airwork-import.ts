@@ -308,7 +308,7 @@ export async function importAirworkExport(params: {
           freshnessExpiresAt
         ]
       );
-      updated += result.rowCount;
+      updated += result.rowCount ?? 0;
     }
 
     await client.query(
