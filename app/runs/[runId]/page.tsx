@@ -4,11 +4,17 @@ import { z } from "zod";
 import { hasDatabaseUrl } from "@/lib/db";
 import { requireUser } from "@/lib/server/auth";
 import { getRunDetail } from "@/lib/server/runs";
+import { listTodos } from "@/lib/todos";
 import {
   generateRunFileAction,
   updateRunStatusAction
 } from "@/app/runs/actions";
 import { RunActionForm } from "@/app/runs/run-action-form";
+import {
+  createFollowUpTodosAction,
+  createTodoFromRunAction
+} from "@/app/todos/actions";
+import { TodoActionForm } from "@/app/todos/todo-action-form";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -99,6 +105,9 @@ export default async function RunDetailPage({
   const markExecuting = updateRunStatusAction.bind(null, run.id, "executing");
   const markDone = updateRunStatusAction.bind(null, run.id, "done");
   const markFailed = updateRunStatusAction.bind(null, run.id, "failed");
+  const createTodo = createTodoFromRunAction.bind(null, run.id);
+  const createFollowUp = createFollowUpTodosAction.bind(null, run.id);
+  const relatedTodos = await listTodos(user.orgId, { runId: run.id });
 
   return (
     <main>
@@ -166,6 +175,37 @@ export default async function RunDetailPage({
               variant="secondary"
             />
           </div>
+        </section>
+
+        <section className="card">
+          <h2>ToDo連携</h2>
+          <div className="card-actions">
+            <TodoActionForm action={createTodo} label="ToDoを作成" />
+            <TodoActionForm
+              action={createFollowUp}
+              label="フォローアップToDoを作成"
+              variant="secondary"
+            />
+          </div>
+        </section>
+
+        <section className="card">
+          <h2>関連ToDo</h2>
+          {relatedTodos.length === 0 ? (
+            <p>このRunに紐づくToDoはまだありません。</p>
+          ) : (
+            <div className="todo-list">
+              {relatedTodos.map((todo) => (
+                <div key={todo.id} className="todo-item">
+                  <div className="todo-meta">
+                    <span className="tag">{todo.status}</span>
+                    <span>{todo.type}</span>
+                  </div>
+                  <Link href={`/todos/${todo.id}`}>{todo.title}</Link>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {run.fileSha256 ? (

@@ -443,6 +443,42 @@ button.secondary {
   gap: 16px;
 }
 
+.filter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.link-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.evidence-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.evidence-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.evidence-row input {
+  flex: 1 1 260px;
+}
+
 .helper-text {
   margin-top: 8px;
   font-size: 0.85rem;

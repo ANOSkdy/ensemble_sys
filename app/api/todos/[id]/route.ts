@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasDatabaseUrl } from "@/lib/db";
+import { requireUser } from "@/lib/server/auth";
 import { deleteTodo, todoIdSchema, todoUpdateSchema, updateTodo } from "@/lib/todos";
 
 export const runtime = "nodejs";
@@ -25,6 +26,22 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
   }
 
+  let user;
+  try {
+    user = await requireUser();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "UNAUTHENTICATED" },
+      { status: 401 }
+    );
+  }
+  if (user.orgId === null) {
+    return NextResponse.json(
+      { ok: false, error: "MISSING_ORG" },
+      { status: 403 }
+    );
+  }
+
   const body = await _request.json().catch(() => null);
   const parsed = todoUpdateSchema.safeParse(body ?? {});
   if (!parsed.success || Object.keys(parsed.data).length === 0) {
@@ -34,12 +51,25 @@ export async function PATCH(
     );
   }
 
-  const result = await updateTodo(id, parsed.data);
-  if ((result?.rowCount ?? 0) === 0) {
-    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
-  }
+  try {
+    const result = await updateTodo(user.orgId, id, parsed.data);
+    if ((result.rowCount ?? 0) === 0) {
+      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    }
 
-  return NextResponse.json({ ok: true, todo: result?.todo });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "MISSING_TODOS_TABLE") {
+      return NextResponse.json(
+        { ok: false, error: "MISSING_TODOS_TABLE" },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      { ok: false, error: "DB_UNAVAILABLE" },
+      { status: 503 }
+    );
+  }
 }
 
 export async function DELETE(
@@ -58,10 +88,39 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
   }
 
-  const deleted = await deleteTodo(id);
-  if (!deleted) {
-    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+  let user;
+  try {
+    user = await requireUser();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "UNAUTHENTICATED" },
+      { status: 401 }
+    );
+  }
+  if (user.orgId === null) {
+    return NextResponse.json(
+      { ok: false, error: "MISSING_ORG" },
+      { status: 403 }
+    );
   }
 
-  return NextResponse.json({ ok: true });
+  try {
+    const deleted = await deleteTodo(user.orgId, id);
+    if (!deleted) {
+      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "MISSING_TODOS_TABLE") {
+      return NextResponse.json(
+        { ok: false, error: "MISSING_TODOS_TABLE" },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      { ok: false, error: "DB_UNAVAILABLE" },
+      { status: 503 }
+    );
+  }
 }
