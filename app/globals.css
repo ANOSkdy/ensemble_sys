@@ -115,6 +115,18 @@ body:has(.login-page) .nav-toggle-button {
   display: none;
 }
 
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-page .container {
+  width: min(420px, 100%);
+}
+
 .app-main {
   min-width: 0;
   display: flex;

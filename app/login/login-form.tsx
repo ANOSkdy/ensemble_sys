@@ -1,12 +1,13 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useFormState, useFormStatus } from "react-dom";
 import { loginAction, type LoginState } from "@/app/login/actions";
 
 const initialState: LoginState = { ok: true };
 
 export function LoginForm() {
   const [, formAction] = useFormState(loginAction, initialState);
+  const { pending } = useFormStatus();
 
   return (
     <form className="card" action={formAction}>
@@ -30,6 +31,9 @@ export function LoginForm() {
           required
         />
       </div>
+      <button type="submit" disabled={pending} aria-disabled={pending}>
+        {pending ? "サインイン中..." : "サインイン"}
+      </button>
     </form>
   );
 }
