@@ -8,6 +8,7 @@ export type AuthenticatedUser = {
   userId: string; // UUID
   orgId: string | null; // UUID or null
   email: string;
+  role: string | null;
 };
 
 export async function requireUser(): Promise<AuthenticatedUser> {
@@ -30,7 +31,10 @@ export async function requireUser(): Promise<AuthenticatedUser> {
     id: string;
     email: string;
     org_id: string | null;
-  }>("SELECT id, email, org_id FROM users WHERE id = $1 LIMIT 1", [userId]);
+    role: string | null;
+  }>("SELECT id, email, org_id, role FROM users WHERE id = $1 LIMIT 1", [
+    userId
+  ]);
 
   const user = result.rows[0];
   if (!user) {
@@ -40,6 +44,15 @@ export async function requireUser(): Promise<AuthenticatedUser> {
   return {
     userId: user.id,
     orgId: user.org_id ?? null,
-    email: user.email
+    email: user.email,
+    role: user.role ?? null
   };
+}
+
+export async function requireAdminUser(): Promise<AuthenticatedUser> {
+  const user = await requireUser();
+  if (user.role !== "admin") {
+    throw new Error("FORBIDDEN");
+  }
+  return user;
 }
