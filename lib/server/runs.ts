@@ -37,6 +37,15 @@ export type RunItemRecord = {
   clientId: string;
   clientName: string;
   payload: Record<string, string> | null;
+  validationErrors: RunItemValidationError[] | null;
+};
+
+export type RunItemValidationError = {
+  message: string;
+  field_key?: string | null;
+  row_number?: number | null;
+  job_offer_id?: string | null;
+  source_file?: string | null;
 };
 
 export type RunItemValidation = {
@@ -196,6 +205,7 @@ export async function listRunItems(
       client_id: string;
       client_name: string;
       payload_json: Record<string, string> | null;
+      validation_errors: RunItemValidationError[] | null;
     }>(
       `SELECT ri.id,
               ri.action,
@@ -204,7 +214,8 @@ export async function listRunItems(
               jobs.internal_title AS job_title,
               clients.id AS client_id,
               clients.name AS client_name,
-              jr.payload_json
+              jr.payload_json,
+              ri.validation_errors
        FROM run_items AS ri
        JOIN runs ON runs.id = ri.run_id
        JOIN job_postings AS jp ON jp.id = ri.job_posting_id
@@ -224,7 +235,8 @@ export async function listRunItems(
       jobTitle: row.job_title,
       clientId: row.client_id,
       clientName: row.client_name,
-      payload: row.payload_json
+      payload: row.payload_json,
+      validationErrors: row.validation_errors ?? null
     }));
   } catch (error) {
     if (isMissingTableError(error)) {
