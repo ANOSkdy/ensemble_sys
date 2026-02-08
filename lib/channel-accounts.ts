@@ -65,7 +65,7 @@ function mapChannelAccount(row: {
 }
 
 export async function getChannelAccount(
-  orgId: number,
+  orgId: string,
   clientId: string
 ): Promise<ChannelAccount | null> {
   try {
@@ -97,7 +97,7 @@ export async function getChannelAccount(
 }
 
 export async function upsertChannelAccount(
-  orgId: number,
+  orgId: string,
   clientId: string,
   data: ChannelAccountInput
 ): Promise<ChannelAccount | null> {

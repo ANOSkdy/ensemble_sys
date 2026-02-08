@@ -45,12 +45,12 @@ export async function upsertChannelAccountAction(
 
   try {
     const user = await requireUser();
-    if (user.orgId === null) {
+    if (!user.orgId) {
       return { ok: false, message: "組織情報が見つかりません。" };
     }
 
     const account = await upsertChannelAccount(
-      user.orgId,
+      user.orgId, // UUID string
       parsedId.data,
       parsed.data
     );
@@ -61,9 +61,17 @@ export async function upsertChannelAccountAction(
 
     revalidatePath(`/clients/${clientId}/channels`);
 
-    const protocol = new URL(parsed.data.managementUrl).protocol;
-    if (protocol !== "https:") {
-      return { ok: true, message: "保存しました。https の利用が推奨です。" };
+    // managementUrl が空 or 無効URLでも保存自体は成功しているので、ここで失敗扱いにしない
+    const urlStr = parsed.data.managementUrl?.trim?.() ?? "";
+    if (urlStr) {
+      try {
+        const protocol = new URL(urlStr).protocol;
+        if (protocol !== "https:") {
+          return { ok: true, message: "保存しました。https の利用が推奨です。" };
+        }
+      } catch {
+        // ここには来ないのが理想だが、万一でも保存は成功しているので握りつぶす
+      }
     }
 
     return { ok: true, message: "保存しました。" };
