@@ -110,12 +110,12 @@ async function parseXlsx(buffer: Buffer): Promise<AirworkExportRow[]> {
 
   const rows: AirworkExportRow[] = [];
   const headerRow = worksheet.getRow(1);
-  const headers = headerRow.values
-    .slice(1)
-    .map((value, index) => {
-      const raw = value == null ? "" : String(value);
-      return normalizeHeader(raw, index);
-    });
+  const headers: string[] = [];
+  for (let col = 1; col <= headerRow.cellCount; col += 1) {
+    const cellValue = headerRow.getCell(col).value;
+    const raw = cellValue == null ? "" : String(cellValue);
+    headers.push(normalizeHeader(raw, col - 1));
+  }
 
   for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const row = worksheet.getRow(rowNumber);
