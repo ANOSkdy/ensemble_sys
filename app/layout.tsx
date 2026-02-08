@@ -75,6 +75,19 @@ export default function RootLayout({
                 </svg>
                 Jobs
               </Link>
+              <Link href="/meetings" className="nav-link">
+                <svg
+                  className="line-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle cx="8" cy="8" r="3" />
+                  <circle cx="16" cy="8" r="3" />
+                  <path d="M4 20c1.8-3 6.2-3 8 0" />
+                  <path d="M12 20c1.8-3 6.2-3 8 0" />
+                </svg>
+                Meetings
+              </Link>
             </nav>
             <form action="/api/auth/logout" method="post">
               <button type="submit" className="nav-logout">
