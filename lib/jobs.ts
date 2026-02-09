@@ -33,6 +33,26 @@ export type JobListFilters = {
   refreshCandidate?: "yes" | "no";
 };
 
+export async function countFreshnessCandidates(orgId: string): Promise<number> {
+  try {
+    const result = await query<{ count: string }>(
+      `SELECT COUNT(DISTINCT jobs.id) AS count
+       FROM jobs
+       JOIN job_postings AS jp ON jp.job_id = jobs.id
+       WHERE jobs.org_id = $1
+         AND jp.channel = $2
+         AND (jp.is_refresh_candidate = true OR jp.freshness_expires_at <= NOW())`,
+      [orgId, "airwork"]
+    );
+    return Number(result.rows[0]?.count ?? 0);
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return 0;
+    }
+    throw error;
+  }
+}
+
 function isMissingTableError(error: unknown): boolean {
   return (
     typeof error === "object" &&

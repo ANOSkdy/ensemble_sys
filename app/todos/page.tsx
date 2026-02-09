@@ -18,7 +18,11 @@ const statusLabels: Record<(typeof TODO_STATUSES)[number], string> = {
 };
 
 const typeLabels: Record<(typeof TODO_TYPES)[number], string> = {
+  airwork_unpublish: "Airwork Unpublish",
   airwork_upload_file: "Airwork Upload",
+  airwork_republish: "Airwork Republish",
+  airwork_download_sync: "Airwork Download & Sync",
+  airwork_link_new_job_offer_id: "Airwork Link Job Offer",
   download_sync: "Download & Sync",
   link_new_job_offer_id: "Link Job Offer"
 };

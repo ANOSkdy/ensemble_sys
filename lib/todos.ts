@@ -10,7 +10,11 @@ export const TODO_STATUSES = [
 ] as const;
 
 export const TODO_TYPES = [
+  "airwork_unpublish",
   "airwork_upload_file",
+  "airwork_republish",
+  "airwork_download_sync",
+  "airwork_link_new_job_offer_id",
   "download_sync",
   "link_new_job_offer_id"
 ] as const;
