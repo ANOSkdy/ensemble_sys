@@ -5,10 +5,9 @@ import { hasDatabaseUrl } from "@/lib/db";
 import { requireUser } from "@/lib/server/auth";
 import {
   getRunDetail,
-  getRunValidationMasters,
-  listRunItems,
-  validateRunItem
+  listRunItems
 } from "@/lib/server/runs";
+import { validateRunItems } from "@/src/server/airwork/validate";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -85,7 +84,10 @@ export default async function RunPreviewPage({
   }
 
   const items = await listRunItems(user.orgId, parsedRunId.data);
-  const masters = await getRunValidationMasters(user.orgId, run.clientId);
+  const validationSummary = await validateRunItems(user.orgId, parsedRunId.data);
+  const validationById = new Map(
+    validationSummary.items.map((entry) => [entry.runItemId, entry])
+  );
 
   return (
     <main>
@@ -105,6 +107,10 @@ export default async function RunPreviewPage({
             </div>
           </div>
           <p>生成前に差分と検証結果を確認してください。</p>
+          <div className="list-meta">
+            <span className="tag">Hard {validationSummary.hardErrorCount}</span>
+            <span className="tag">Warning {validationSummary.warningCount}</span>
+          </div>
         </section>
 
         {items.length === 0 ? (
@@ -126,12 +132,14 @@ export default async function RunPreviewPage({
                 </thead>
                 <tbody>
                   {items.map((item) => {
-                    const validation = validateRunItem(item, masters);
+                    const validation = validationById.get(item.id);
                     const title = item.payload?.title ?? "—";
                     const description = item.payload?.description ?? "—";
                     const jobOfferId =
                       item.payload?.job_offer_id ?? item.jobOfferId ?? "—";
-                    const importErrors = item.validationErrors ?? [];
+                    const hardErrors = validation?.hardErrors ?? [];
+                    const warnings = validation?.warnings ?? [];
+                    const importErrors = validation?.importedErrors ?? [];
 
                     return (
                       <tr key={item.id}>
@@ -146,36 +154,68 @@ export default async function RunPreviewPage({
                           <div>description: {description}</div>
                         </td>
                         <td>
-                          {validation.errors.length > 0 ? (
-                            <ul>
-                              {validation.errors.map((error) => (
-                                <li key={error}>{error}</li>
-                              ))}
-                            </ul>
+                          <div className="list-meta">
+                            <span className="tag">Hard {hardErrors.length}</span>
+                            <span className="tag">Warn {warnings.length}</span>
+                          </div>
+                          {hardErrors.length === 0 &&
+                          warnings.length === 0 &&
+                          importErrors.length === 0 ? (
+                            <p className="list-meta">問題なし</p>
                           ) : (
-                            <p className="list-meta">エラーなし</p>
+                            <details>
+                              <summary>詳細を見る</summary>
+                              {hardErrors.length > 0 ? (
+                                <>
+                                  <p className="list-meta">ハードエラー</p>
+                                  <ul>
+                                    {hardErrors.map((error, index) => (
+                                      <li key={`${item.id}-hard-${index}`}>
+                                        {error.message}
+                                        {error.field_key
+                                          ? ` (${error.field_key})`
+                                          : ""}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </>
+                              ) : null}
+                              {warnings.length > 0 ? (
+                                <>
+                                  <p className="list-meta">警告</p>
+                                  <ul className="list-meta">
+                                    {warnings.map((warning, index) => (
+                                      <li key={`${item.id}-warn-${index}`}>
+                                        {warning.message}
+                                        {warning.field_key
+                                          ? ` (${warning.field_key})`
+                                          : ""}
+                                        {warning.detail ? ` ${warning.detail}` : ""}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </>
+                              ) : null}
+                              {importErrors.length > 0 ? (
+                                <>
+                                  <p className="list-meta">入稿結果エラー</p>
+                                  <ul>
+                                    {importErrors.map((error, index) => (
+                                      <li key={`${item.id}-import-${index}`}>
+                                        {error.message}
+                                        {error.field_key
+                                          ? ` (${error.field_key})`
+                                          : ""}
+                                        {error.row_number
+                                          ? ` 行:${error.row_number}`
+                                          : ""}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </>
+                              ) : null}
+                            </details>
                           )}
-                          {importErrors.length > 0 ? (
-                            <>
-                              <p className="list-meta">入稿結果エラー</p>
-                              <ul>
-                                {importErrors.map((error, index) => (
-                                  <li key={`${item.id}-import-${index}`}>
-                                    {error.message}
-                                    {error.field_key ? ` (${error.field_key})` : ""}
-                                    {error.row_number ? ` 行:${error.row_number}` : ""}
-                                  </li>
-                                ))}
-                              </ul>
-                            </>
-                          ) : null}
-                          {validation.warnings.length > 0 ? (
-                            <ul className="list-meta">
-                              {validation.warnings.map((warning) => (
-                                <li key={warning}>{warning}</li>
-                              ))}
-                            </ul>
-                          ) : null}
                         </td>
                       </tr>
                     );

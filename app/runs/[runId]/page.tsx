@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { hasDatabaseUrl } from "@/lib/db";
 import { requireUser } from "@/lib/server/auth";
-import { getRunDetail, listRunItems } from "@/lib/server/runs";
+import {
+  getImportedValidationErrors,
+  getRunDetail,
+  listRunItems
+} from "@/lib/server/runs";
+import { validateRunItems } from "@/src/server/airwork/validate";
 import { listTodos } from "@/lib/todos";
 import {
   generateRunFileAction,
@@ -108,10 +113,16 @@ export default async function RunDetailPage({
   const createTodo = createTodoFromRunAction.bind(null, run.id);
   const createFollowUp = createFollowUpTodosAction.bind(null, run.id);
   const relatedTodos = await listTodos(user.orgId, { runId: run.id });
+  const validationSummary = await validateRunItems(user.orgId, run.id);
+  const hasHardErrors = validationSummary.hardErrorCount > 0;
+  const hasWarnings = validationSummary.warningCount > 0;
   const runItems = await listRunItems(user.orgId, run.id);
-  const itemsWithErrors = runItems.filter(
-    (item) => (item.validationErrors?.length ?? 0) > 0
-  );
+  const itemsWithErrors = runItems
+    .map((item) => ({
+      ...item,
+      importedErrors: getImportedValidationErrors(item.validationErrors)
+    }))
+    .filter((item) => item.importedErrors.length > 0);
 
   return (
     <main>
@@ -164,8 +175,21 @@ export default async function RunDetailPage({
 
         <section className="card">
           <h2>アクション</h2>
+          {hasHardErrors ? (
+            <p className="list-meta">
+              ハードエラーがあるため、ファイル生成は無効化されています。
+            </p>
+          ) : hasWarnings ? (
+            <p className="list-meta">
+              警告があります。必要に応じてプレビューを確認してから生成してください。
+            </p>
+          ) : null}
           <div className="card-actions">
-            <RunActionForm action={generateAction} label="ファイル生成" />
+            <RunActionForm
+              action={generateAction}
+              label="ファイル生成"
+              disabled={hasHardErrors}
+            />
             <RunActionForm
               action={markExecuting}
               label="実行中にする"
@@ -228,7 +252,7 @@ export default async function RunDetailPage({
                     <span>{item.jobTitle}</span>
                   </div>
                   <ul>
-                    {item.validationErrors?.map((error, index) => (
+                    {item.importedErrors.map((error, index) => (
                       <li key={`${item.id}-${index}`}>
                         {error.message}
                         {error.field_key ? ` (${error.field_key})` : ""}

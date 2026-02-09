@@ -37,7 +37,7 @@ export type RunItemRecord = {
   clientId: string;
   clientName: string;
   payload: Record<string, string> | null;
-  validationErrors: RunItemValidationError[] | null;
+  validationErrors: RunItemValidationStored | null;
 };
 
 export type RunItemValidationError = {
@@ -47,6 +47,23 @@ export type RunItemValidationError = {
   job_offer_id?: string | null;
   source_file?: string | null;
 };
+
+export type RunItemPreflightIssue = {
+  code: string;
+  message: string;
+  field_key?: string | null;
+  detail?: string | null;
+};
+
+export type RunItemValidationSummary = {
+  hardErrors: RunItemPreflightIssue[];
+  warnings: RunItemPreflightIssue[];
+  imported?: RunItemValidationError[];
+};
+
+export type RunItemValidationStored =
+  | RunItemValidationSummary
+  | RunItemValidationError[];
 
 export type RunItemValidation = {
   errors: string[];
@@ -205,7 +222,7 @@ export async function listRunItems(
       client_id: string;
       client_name: string;
       payload_json: Record<string, string> | null;
-      validation_errors: RunItemValidationError[] | null;
+      validation_errors: RunItemValidationStored | null;
     }>(
       `SELECT ri.id,
               ri.action,
@@ -355,6 +372,18 @@ export async function listAirworkFieldKeys(): Promise<string[]> {
     }
     throw error;
   }
+}
+
+export function getImportedValidationErrors(
+  validation: RunItemValidationStored | null
+): RunItemValidationError[] {
+  if (!validation) {
+    return [];
+  }
+  if (Array.isArray(validation)) {
+    return validation;
+  }
+  return Array.isArray(validation.imported) ? validation.imported : [];
 }
 
 export function buildAirworkColumns(
