@@ -11,12 +11,11 @@ import {
   buildRunSha256,
   createRunWithItems,
   getRunDetail,
-  getRunValidationMasters,
   listAirworkFieldKeys,
-  listRunItems,
-  validateRunItem
+  listRunItems
 } from "@/lib/server/runs";
 import { uploadRunFile } from "@/lib/server/blob";
+import { validateRunItems } from "@/src/server/airwork/validate";
 
 export type RunFormState = {
   ok: boolean;
@@ -122,13 +121,11 @@ export async function generateRunFileAction(
     return { ok: false, message: "対象求人がありません。" };
   }
 
-  const masters = await getRunValidationMasters(user.orgId, run.clientId);
-  const validationResults = items.map((item) => validateRunItem(item, masters));
-  const hasErrors = validationResults.some((result) => result.errors.length > 0);
-  if (hasErrors) {
+  const validationSummary = await validateRunItems(user.orgId, parsedRunId.data);
+  if (validationSummary.hardErrorCount > 0) {
     return {
       ok: false,
-      message: "バリデーションエラーがあります。プレビューで確認してください。"
+      message: `ハードエラーが ${validationSummary.hardErrorCount} 件あります。プレビューで確認してください。`
     };
   }
 
@@ -194,7 +191,12 @@ export async function generateRunFileAction(
   revalidatePath(`/runs/${run.id}`);
   revalidatePath(`/runs/${run.id}/preview`);
 
-  return { ok: true, message: "ファイルを生成しました。" };
+  const warningMessage =
+    validationSummary.warningCount > 0
+      ? `警告が ${validationSummary.warningCount} 件ありますが、ファイルを生成しました。`
+      : "ファイルを生成しました。";
+
+  return { ok: true, message: warningMessage };
 }
 
 export async function updateRunStatusAction(
