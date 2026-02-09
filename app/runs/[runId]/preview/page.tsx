@@ -131,6 +131,7 @@ export default async function RunPreviewPage({
                     const description = item.payload?.description ?? "—";
                     const jobOfferId =
                       item.payload?.job_offer_id ?? item.jobOfferId ?? "—";
+                    const importErrors = item.validationErrors ?? [];
 
                     return (
                       <tr key={item.id}>
@@ -154,6 +155,20 @@ export default async function RunPreviewPage({
                           ) : (
                             <p className="list-meta">エラーなし</p>
                           )}
+                          {importErrors.length > 0 ? (
+                            <>
+                              <p className="list-meta">入稿結果エラー</p>
+                              <ul>
+                                {importErrors.map((error, index) => (
+                                  <li key={`${item.id}-import-${index}`}>
+                                    {error.message}
+                                    {error.field_key ? ` (${error.field_key})` : ""}
+                                    {error.row_number ? ` 行:${error.row_number}` : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : null}
                           {validation.warnings.length > 0 ? (
                             <ul className="list-meta">
                               {validation.warnings.map((warning) => (

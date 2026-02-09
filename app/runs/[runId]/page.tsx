@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { hasDatabaseUrl } from "@/lib/db";
 import { requireUser } from "@/lib/server/auth";
-import { getRunDetail } from "@/lib/server/runs";
+import { getRunDetail, listRunItems } from "@/lib/server/runs";
 import { listTodos } from "@/lib/todos";
 import {
   generateRunFileAction,
@@ -108,6 +108,10 @@ export default async function RunDetailPage({
   const createTodo = createTodoFromRunAction.bind(null, run.id);
   const createFollowUp = createFollowUpTodosAction.bind(null, run.id);
   const relatedTodos = await listTodos(user.orgId, { runId: run.id });
+  const runItems = await listRunItems(user.orgId, run.id);
+  const itemsWithErrors = runItems.filter(
+    (item) => (item.validationErrors?.length ?? 0) > 0
+  );
 
   return (
     <main>
@@ -127,6 +131,9 @@ export default async function RunDetailPage({
             <div className="card-actions">
               <Link href="/runs" className="secondary-link">
                 Run一覧へ
+              </Link>
+              <Link href={`/runs/${run.id}/import`} className="secondary-link">
+                取り込み
               </Link>
               <Link href={`/runs/${run.id}/preview`} className="secondary-link">
                 プレビュー
@@ -202,6 +209,33 @@ export default async function RunDetailPage({
                     <span>{todo.type}</span>
                   </div>
                   <Link href={`/todos/${todo.id}`}>{todo.title}</Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h2>取り込みエラー</h2>
+          {itemsWithErrors.length === 0 ? (
+            <p>取り込みエラーはありません。</p>
+          ) : (
+            <div className="todo-list">
+              {itemsWithErrors.map((item) => (
+                <div key={item.id} className="todo-item">
+                  <div className="todo-meta">
+                    <span className="tag">error</span>
+                    <span>{item.jobTitle}</span>
+                  </div>
+                  <ul>
+                    {item.validationErrors?.map((error, index) => (
+                      <li key={`${item.id}-${index}`}>
+                        {error.message}
+                        {error.field_key ? ` (${error.field_key})` : ""}
+                        {error.row_number ? ` 行:${error.row_number}` : ""}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
