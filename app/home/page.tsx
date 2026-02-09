@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/server/auth";
 import { listClients } from "@/lib/clients";
+import { hasDatabaseUrl } from "@/lib/db";
+import { countFreshnessCandidates } from "@/lib/jobs";
 import { ClientForm } from "@/app/home/client-form";
 import { createClientAction } from "@/app/home/actions";
 
@@ -32,7 +34,10 @@ export default async function ClientsPage() {
     );
   }
 
-  const clients = await listClients(user.orgId);
+  const [clients, freshnessCount] = await Promise.all([
+    listClients(user.orgId),
+    hasDatabaseUrl() ? countFreshnessCandidates(user.orgId) : Promise.resolve(null)
+  ]);
 
   return (
     <main>
@@ -40,6 +45,11 @@ export default async function ClientsPage() {
         <section className="card">
           <h1>顧客管理</h1>
           <p>CRM の起点となる顧客一覧です。最小情報で登録できます。</p>
+          <p className="summary-label">
+            {freshnessCount === null
+              ? "DATABASE_URL が未設定のため、Freshness の件数を取得できません。"
+              : `Freshness candidates: ${freshnessCount}`}
+          </p>
         </section>
         <details className="card collapsible">
           <summary>新規クライアント</summary>
