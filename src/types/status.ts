@@ -1,0 +1,10 @@
+﻿export type AppStatus =
+  | "draft"
+  | "in_review"
+  | "approved"
+  | "applied"
+  | "executing"
+  | "done"
+  | "failed"
+  | "blocked"
+  | "ai"
