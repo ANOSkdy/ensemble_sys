@@ -5,16 +5,21 @@
   accent1: "#FFD166",
   accent2: "#F25F5C",
   accent3: "#9D59EC",
-} as const
-
-export const semanticColors = {
-  canvas: "#F9F9F9",
-  card: "#FFFFFF",
+  white: "#FFFFFF",
   textDefault: "#1F2937",
   textSubtle: "#6B7280",
-  info: "#4A90E2",
-  success: "#50E3C2",
-  warn: "#FFD166",
-  error: "#F25F5C",
-  ai: "#9D59EC",
+  borderSoft: "#E5E7EB",
+} as const
+
+export const shadows = {
+  soft: "0 8px 24px rgba(15, 23, 42, 0.06)",
+} as const
+
+export const radius = {
+  card: "1.5rem",
+  badge: "9999px",
+} as const
+
+export const motion = {
+  base: "180ms ease",
 } as const

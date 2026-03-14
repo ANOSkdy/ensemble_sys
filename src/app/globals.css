@@ -12,8 +12,13 @@
 html,
 body {
   background: var(--color-base);
+  color: #1F2937;
 }
 
 * {
   box-sizing: border-box;
+}
+
+body {
+  margin: 0;
 }
