@@ -1,0 +1,262 @@
+{
+  "meta": {
+    "name": "airwork-ops-console expected schema",
+    "version": "1.0.0",
+    "source": [
+      "basic-design-v1.md",
+      "detailed-design-v1.md"
+    ],
+    "notes": [
+      "This is a practical verification baseline derived from the design docs.",
+      "It focuses on required tables, core columns, required nullability, and key relationships.",
+      "Payload-heavy Airwork fields are intentionally modeled in JSONB on job_revisions.payload_json."
+    ]
+  },
+  "schemas": {
+    "public": {
+      "tables": {
+        "organizations": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "name": { "type": "text", "nullable": false },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "users": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "organization_id": { "type": "uuid", "nullable": false, "fk": "organizations.id" },
+            "email": { "type": "text", "nullable": false, "unique": true },
+            "password_hash": { "type": "text", "nullable": false },
+            "name": { "type": "text", "nullable": false },
+            "role": { "type": "text", "nullable": false },
+            "is_active": { "type": "boolean", "nullable": false },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "sessions": {
+          "required": false,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "user_id": { "type": "uuid", "nullable": false, "fk": "users.id" },
+            "session_token": { "type": "text", "nullable": false, "unique": true },
+            "expires_at": { "type": "timestamptz", "nullable": false },
+            "created_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "clients": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "organization_id": { "type": "uuid", "nullable": false, "fk": "organizations.id" },
+            "name": { "type": "text", "nullable": false },
+            "industry": { "type": "text", "nullable": true },
+            "contact_name": { "type": "text", "nullable": true },
+            "timezone": { "type": "text", "nullable": false },
+            "notes": { "type": "text", "nullable": true },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "channel_accounts": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "client_id": { "type": "uuid", "nullable": false, "fk": "clients.id" },
+            "channel": { "type": "text", "nullable": false },
+            "management_url": { "type": "text", "nullable": true },
+            "login_id": { "type": "text", "nullable": true },
+            "encrypted_secret": { "type": "text", "nullable": true },
+            "notes": { "type": "text", "nullable": true },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "airwork_fields": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "field_key": { "type": "text", "nullable": false, "unique": true },
+            "label_ja": { "type": "text", "nullable": false },
+            "input_kind": { "type": "text", "nullable": false },
+            "is_editable": { "type": "boolean", "nullable": false },
+            "constraints": { "type": "jsonb", "nullable": true },
+            "sort_order": { "type": "integer", "nullable": false },
+            "spec_version": { "type": "text", "nullable": false },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "airwork_codes": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "field_key": { "type": "text", "nullable": false },
+            "code": { "type": "text", "nullable": false },
+            "name_ja": { "type": "text", "nullable": false },
+            "is_active": { "type": "boolean", "nullable": false },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          },
+          "unique_sets": [
+            ["field_key", "code"]
+          ]
+        },
+        "airwork_locations": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "client_id": { "type": "uuid", "nullable": false, "fk": "clients.id" },
+            "working_location_id": { "type": "text", "nullable": false },
+            "name": { "type": "text", "nullable": false },
+            "is_active": { "type": "boolean", "nullable": false },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          },
+          "unique_sets": [
+            ["client_id", "working_location_id"]
+          ]
+        },
+        "jobs": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "client_id": { "type": "uuid", "nullable": false, "fk": "clients.id" },
+            "title": { "type": "text", "nullable": false },
+            "status": { "type": "text", "nullable": false },
+            "notes": { "type": "text", "nullable": true },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "job_postings": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "job_id": { "type": "uuid", "nullable": false, "fk": "jobs.id" },
+            "channel_account_id": { "type": "uuid", "nullable": true, "fk": "channel_accounts.id" },
+            "job_offer_id": { "type": "text", "nullable": true },
+            "publish_status": { "type": "text", "nullable": true },
+            "last_published_at": { "type": "timestamptz", "nullable": true },
+            "freshness_expires_at": { "type": "timestamptz", "nullable": true },
+            "is_refresh_candidate": { "type": "boolean", "nullable": false },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "job_revisions": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "job_posting_id": { "type": "uuid", "nullable": false, "fk": "job_postings.id" },
+            "payload_json": { "type": "jsonb", "nullable": false },
+            "payload_hash": { "type": "text", "nullable": false },
+            "status": { "type": "text", "nullable": false },
+            "approved_by": { "type": "uuid", "nullable": true, "fk": "users.id" },
+            "approved_at": { "type": "timestamptz", "nullable": true },
+            "created_by": { "type": "uuid", "nullable": true, "fk": "users.id" },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "meetings": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "client_id": { "type": "uuid", "nullable": false, "fk": "clients.id" },
+            "meeting_date": { "type": "date", "nullable": false },
+            "title": { "type": "text", "nullable": true },
+            "notes": { "type": "text", "nullable": true },
+            "created_by": { "type": "uuid", "nullable": true, "fk": "users.id" },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "ai_proposals": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "job_posting_id": { "type": "uuid", "nullable": false, "fk": "job_postings.id" },
+            "job_revision_id": { "type": "uuid", "nullable": true, "fk": "job_revisions.id" },
+            "meeting_id": { "type": "uuid", "nullable": true, "fk": "meetings.id" },
+            "input_prompt": { "type": "text", "nullable": false },
+            "model": { "type": "text", "nullable": false },
+            "output_json": { "type": "jsonb", "nullable": false },
+            "status": { "type": "text", "nullable": false },
+            "applied_revision_id": { "type": "uuid", "nullable": true, "fk": "job_revisions.id" },
+            "created_by": { "type": "uuid", "nullable": true, "fk": "users.id" },
+            "created_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "runs": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "client_id": { "type": "uuid", "nullable": false, "fk": "clients.id" },
+            "run_type": { "type": "text", "nullable": false },
+            "format": { "type": "text", "nullable": false },
+            "status": { "type": "text", "nullable": false },
+            "file_blob_url": { "type": "text", "nullable": true },
+            "sha256": { "type": "text", "nullable": true },
+            "executed_by": { "type": "uuid", "nullable": true, "fk": "users.id" },
+            "executed_at": { "type": "timestamptz", "nullable": true },
+            "completed_at": { "type": "timestamptz", "nullable": true },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "run_items": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "run_id": { "type": "uuid", "nullable": false, "fk": "runs.id" },
+            "job_revision_id": { "type": "uuid", "nullable": false, "fk": "job_revisions.id" },
+            "job_posting_id": { "type": "uuid", "nullable": false, "fk": "job_postings.id" },
+            "action": { "type": "text", "nullable": false },
+            "validation_errors": { "type": "jsonb", "nullable": true },
+            "result_status": { "type": "text", "nullable": true },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "todos": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "client_id": { "type": "uuid", "nullable": true, "fk": "clients.id" },
+            "job_posting_id": { "type": "uuid", "nullable": true, "fk": "job_postings.id" },
+            "run_id": { "type": "uuid", "nullable": true, "fk": "runs.id" },
+            "type": { "type": "text", "nullable": false },
+            "title": { "type": "text", "nullable": false },
+            "status": { "type": "text", "nullable": false },
+            "due_at": { "type": "timestamptz", "nullable": true },
+            "evidence_url": { "type": "text", "nullable": true },
+            "notes": { "type": "text", "nullable": true },
+            "assigned_to": { "type": "uuid", "nullable": true, "fk": "users.id" },
+            "completed_at": { "type": "timestamptz", "nullable": true },
+            "created_at": { "type": "timestamptz", "nullable": false },
+            "updated_at": { "type": "timestamptz", "nullable": false }
+          }
+        },
+        "audit_logs": {
+          "required": true,
+          "columns": {
+            "id": { "type": "uuid", "nullable": false, "pk": true },
+            "organization_id": { "type": "uuid", "nullable": true, "fk": "organizations.id" },
+            "user_id": { "type": "uuid", "nullable": true, "fk": "users.id" },
+            "entity_type": { "type": "text", "nullable": false },
+            "entity_id": { "type": "uuid", "nullable": true },
+            "action": { "type": "text", "nullable": false },
+            "before_json": { "type": "jsonb", "nullable": true },
+            "after_json": { "type": "jsonb", "nullable": true },
+            "created_at": { "type": "timestamptz", "nullable": false }
+          }
+        }
+      }
+    }
+  }
+}

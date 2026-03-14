@@ -590,3 +590,29 @@ When there is a choice between:
 - slightly slower but safer and more reviewable change
 
 always choose the safer and more reviewable change.
+
+---
+
+## Actual Neon Schema Priority
+
+For this repository, the live Neon schema is the persistence source of truth.
+
+When logical design names differ from real DB names, implementation must prefer real DB names in SQL and persistence-layer types.
+
+Current examples:
+- org_id over organization_id
+- owner_name over contact_name
+- login_secret_encrypted over encrypted_secret
+- memo over notes
+- value_constraints over constraints
+- name_ja over name
+- internal_title over title
+- file_format over format
+- file_sha256 over sha256
+- actor_user_id over user_id in audit logs
+- client_meetings over meetings
+
+Reference:
+- Docs/db/neon-live-schema-snapshot.json
+- Docs/db/schema-diff-report.md
+- Docs/db/db-alignment-policy.md

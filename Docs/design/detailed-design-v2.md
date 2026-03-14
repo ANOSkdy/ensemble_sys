@@ -582,3 +582,34 @@ export const colors = {
 10. 結果取り込み（エラー解析）
 11. Visual Regression / E2EでUI凍結確認
 
+
+---
+
+# DB Alignment Addendum (Actual Neon Schema Priority)
+
+This addendum updates implementation expectations to match the current Neon database.
+
+## Canonical table decision
+- Use `client_meetings` as the live meeting-related table.
+- Do not assume `meetings` exists in SQL or foreign key definitions unless a migration explicitly adds it.
+
+## Canonical column decision
+Use actual DB column names in implementation:
+- org_id
+- owner_name
+- login_secret_encrypted
+- memo
+- value_constraints
+- name_ja
+- internal_title
+- publish_status_cache
+- file_format
+- file_sha256
+- actor_user_id
+
+## Type/system notes
+- `users.email` uses `citext`
+- `airwork_codes.name_ja` is nullable in the live DB
+
+## Coding rule
+Application code may define domain aliases, but SQL and persistence-layer types must use actual DB names.

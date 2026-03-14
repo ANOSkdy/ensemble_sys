@@ -1,0 +1,33 @@
+﻿export const dbTable = {
+  organizations: "organizations",
+  users: "users",
+  sessions: "sessions",
+  clients: "clients",
+  channelAccounts: "channel_accounts",
+  airworkFields: "airwork_fields",
+  airworkCodes: "airwork_codes",
+  airworkLocations: "airwork_locations",
+  jobs: "jobs",
+  jobPostings: "job_postings",
+  jobRevisions: "job_revisions",
+  aiProposals: "ai_proposals",
+  runs: "runs",
+  runItems: "run_items",
+  todos: "todos",
+  auditLogs: "audit_logs",
+  clientMeetings: "client_meetings",
+} as const
+
+export const dbColumn = {
+  orgId: "org_id",
+  ownerName: "owner_name",
+  loginSecretEncrypted: "login_secret_encrypted",
+  memo: "memo",
+  valueConstraints: "value_constraints",
+  nameJa: "name_ja",
+  internalTitle: "internal_title",
+  publishStatusCache: "publish_status_cache",
+  fileFormat: "file_format",
+  fileSha256: "file_sha256",
+  actorUserId: "actor_user_id",
+} as const
