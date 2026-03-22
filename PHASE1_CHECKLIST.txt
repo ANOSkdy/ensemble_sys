@@ -1,0 +1,9 @@
+﻿Phase 1 implementation order
+1. Verify actual DB schema using tmp_phase1_schema_check.sql
+2. Review and apply sql/migrations/2026-03-15_phase1_core.sql if needed
+3. Extend src/lib/validators/schemas.ts
+4. Implement DB query files under src/lib/db/queries
+5. Implement Gemini service under src/lib/ai/gemini
+6. Implement API routes
+7. Connect minimal UI for meeting -> proposal -> approve -> queue publish
+8. Run lint/build/dev verification

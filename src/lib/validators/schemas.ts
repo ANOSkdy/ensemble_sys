@@ -1,5 +1,9 @@
-import { z } from "zod"
+﻿import { z } from "zod"
 
+const postgresUuidSchema = z.string().regex(
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+  "Invalid UUID format",
+)
 export const idParamSchema = z.object({
   id: z.string().uuid(),
 })
@@ -36,3 +40,36 @@ export const todoUpdateSchema = z.object({
   instructions: z.string().max(5000).nullable().optional(),
   due_at: z.string().datetime().nullable().optional(),
 })
+export const meetingCreateSchema = z.object({
+  org_id: postgresUuidSchema,
+  client_id: postgresUuidSchema,
+  held_at: z.string().datetime(),
+  memo: z.string().min(1).max(20000),
+  created_by: postgresUuidSchema,
+})
+
+export const proposalGenerateSchema = z.object({
+  org_id: postgresUuidSchema,
+  meeting_id: postgresUuidSchema,
+  job_posting_id: postgresUuidSchema,
+  thinking_level: z.enum(["standard", "deep"]).default("standard"),
+  model: z.string().min(1).max(100).default("gemini-2.5-flash"),
+})
+
+export const proposalApproveSchema = z.object({
+  org_id: postgresUuidSchema,
+  proposal_id: postgresUuidSchema,
+  approved_by: postgresUuidSchema,
+})
+
+export const queuePublishRunSchema = z.object({
+  org_id: postgresUuidSchema,
+  client_id: postgresUuidSchema,
+  job_posting_id: postgresUuidSchema,
+  job_revision_id: postgresUuidSchema,
+  created_by: postgresUuidSchema,
+  channel: z.literal("airwork").default("airwork"),
+  run_type: z.literal("update").default("update"),
+  file_format: z.enum(["txt", "xlsx"]).default("txt"),
+})
+
