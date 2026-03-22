@@ -1,663 +1,311 @@
-# 実装方針書（画面・API・共通UI・ステータス定義）
+# 実装タスク手順書（Phase 1 残作業中心）
 
-## 1. 目的
+## Purpose and scope
 
-本書は、`airwork-ops-console` の今後の実装を Codex 主導で安全かつ効率的に進めるために、画面一覧、API一覧、共通UI、ステータス定義、認証方針、DBアクセス方針を固定するための実装方針書である。  
-Neon 実DBを正とし、設計書・AGENTS.md・実装コードの整合を取りながら、最小差分で段階的に構築する。  
-本書は、基本設計書・詳細設計書・`Docs/db/schema-diff-report.md`・`Docs/db/db-alignment-policy.md` を踏まえた実装用の運用基準とする。
+本書は、`ensemble_sys` の Phase 1 現状実装を前提に、基本設計書（`Docs/design/basic-design-v2.md`）・詳細設計書（`Docs/design/detailed-design-v2.md`）・フェーズ計画（`Docs/phase-plan.md`）と整合する形で、残作業を **優先度・依存関係・実装順・確認方法** 付きで実行可能タスクへ分解した実装手順書である。
 
----
-
-## 2. 前提方針
-
-- リポジトリ: `C:\dev\airwork-ops-console`
-- デプロイ先: Vercel
-- フレームワーク: Next.js App Router + TypeScript
-- パッケージマネージャ: pnpm
-- 主DB: Neon Postgres
-- DBの正: **live Neon schema**
-- DB命名の正: `org_id`, `owner_name`, `memo`, `internal_title`, `file_format`, `file_sha256`, `actor_user_id`, `client_meetings`
-- DBアクセス: server-only
-- runtime: DB利用APIは原則 `nodejs`
-- client bundleに秘密情報を出さない
-- APIは `{ ok: true } / { ok: false }` 形式を基本とする
+- 対象: Next.js App Router + TypeScript + Neon Postgres + Vercel Blob + Gemini Flash（server-only）
+- 方針: 最小差分、段階実装、監査可能性優先
+- 非対象: 本書内では大規模リファクタや UI 全面刷新は扱わない
 
 ---
 
-## 3. 実装フェーズ
+## Current completed state (what is already working)
 
-## Phase 1: 読み取り中心の一覧画面
-最優先で実装する画面とAPI:
-- `/clients`
-- `/jobs`
-- `/runs`
-- `/todos`
+Phase 1 主線として、以下 API のローカル検証での疎通実績を完了済みとして扱う。
 
-対応API:
-- `GET /api/clients`
-- `GET /api/jobs`
-- `GET /api/runs`
-- `GET /api/todos`
+- ✅ `POST /api/meetings` works
+- ✅ `POST /api/meetings/[meetingId]/generate-proposals` works
+- ✅ `GET /api/ai-proposals/[proposalId]` works
+- ✅ `POST /api/ai-proposals/[proposalId]/approve` works
+- ✅ `POST /api/job-revisions/[revisionId]/queue-publish` works
+- ✅ `GET /api/runs/[runId]` works
 
-目的:
-- Neon実DBとの接続確認
-- actual schema ベースの read 実装確立
-- 共通UI部品の定着
-- empty / loading / error の統一
-
-## Phase 2: 詳細画面
-- `/clients/[clientId]`
-- `/jobs/[jobId]`
-- `/runs/[runId]`
-- `/todos/[todoId]`
-
-対応API:
-- `GET /api/clients/[id]`
-- `GET /api/jobs/[id]`
-- `GET /api/runs/[id]`
-- `GET /api/todos/[id]`
-
-目的:
-- 関連データ表示
-- 遷移整合
-- ステータス表示の具体化
-
-## Phase 3: 作成・編集導線
-- `/clients/new`
-- `/jobs/new`
-- `/jobs/[jobId]/edit`
-- `/todos/[todoId]/edit`
-
-対応API:
-- `POST /api/clients`
-- `POST /api/jobs`
-- `PATCH /api/jobs/[id]`
-- `PATCH /api/todos/[id]`
-
-目的:
-- Zod検証
-- DB更新
-- audit_logs運用開始
-
-## Phase 4: 業務コア
-- revision 管理
-- AI proposal 管理
-- run 生成
-- result import
-- freshness
+補足（実装観点）:
+- meeting → proposal → approve → run 作成の API レベル主線は成立
+- Gemini 提案生成は server-only で接続済み
+- run/read 系は最低限の参照導線あり
 
 ---
 
-## 4. 画面一覧と責務
+## DB constraints and known schema rules discovered from the live schema
 
-## 4.1 ホーム `/`
-役割:
-- 主要業務の入口
-- KPIカード表示
-- 一覧画面への導線
+必須制約（実装時に厳守）:
 
-表示内容:
-- Open ToDos
-- Recent Runs
-- Freshness Targets
-- Freshness Candidates
-- Recent Run Summary
-- Pending Tasks
+- `job_revisions.source` は `manual | ai` のみ
+- `runs.run_type` は `update | refresh` のみ
+- `job_revisions.payload_hash` は必須
+- JSON リクエスト本文は UTF-8 前提（日本語の PowerShell / ローカル検証で文字化け注意）
 
-主アクション:
-- Clients / Jobs / Runs / ToDos へ遷移
-
-備考:
-- 初期段階では集計API未実装でも可
-- まずは導線優先
-
-## 4.2 Clients 一覧 `/clients`
-役割:
-- 取引先一覧の表示
-- 詳細画面への導線
-
-主要表示項目:
-- `name`
-- `owner_name`
-- `memo`
-- `created_at`（存在する場合）
-- `updated_at`（存在する場合）
-
-主アクション:
-- 詳細へ遷移
-- 新規作成
-
-対応API:
-- `GET /api/clients`
-
-完了条件:
-- 一覧表示
-- empty state
-- error state
-- row click または詳細リンク
-
-## 4.3 Client 詳細 `/clients/[clientId]`
-役割:
-- 取引先の基本情報表示
-- 関連リソース表示
-
-主要表示:
-- client基本情報
-- channel_accounts
-- airwork_locations
-- jobs
-- client_meetings
-
-対応API:
-- `GET /api/clients/[id]`
-
-## 4.4 Jobs 一覧 `/jobs`
-役割:
-- 求人系データの一覧表示
-
-主要表示項目:
-- `internal_title`
-- `status`
-- `client_id`
-- `updated_at`
-
-対応API:
-- `GET /api/jobs`
-
-## 4.5 Job 詳細 `/jobs/[jobId]`
-役割:
-- 求人基本情報
-- posting / revision / proposal へのハブ
-
-主要表示:
-- job基本情報
-- job_postings
-- job_revisions
-- ai_proposals
-
-対応API:
-- `GET /api/jobs/[id]`
-
-## 4.6 Runs 一覧 `/runs`
-役割:
-- 入稿実行履歴一覧
-
-主要表示項目:
-- `run_type`
-- `channel`
-- `file_format`
-- `status`
-- `executed_at`
-- `completed_at`
-
-対応API:
-- `GET /api/runs`
-
-## 4.7 Run 詳細 `/runs/[runId]`
-役割:
-- 実行対象、結果、エラーの詳細表示
-
-主要表示:
-- run本体
-- run_items
-- 結果サマリ
-
-対応API:
-- `GET /api/runs/[id]`
-
-## 4.8 ToDos 一覧 `/todos`
-役割:
-- ToDoの作業管理一覧
-
-主要表示項目:
-- `title`
-- `status`
-- `assigned_to`
-- `due_date`
-- `completed_at`
-
-対応API:
-- `GET /api/todos`
-
-## 4.9 Todo 詳細 `/todos/[todoId]`
-役割:
-- 作業内容、メモ、証跡表示
-
-主要表示:
-- `instructions`
-- `evidence_urls`
-- `status`
-- `completed_at`
-
-対応API:
-- `GET /api/todos/[id]`
-
-## 4.10 Meetings 系
-実DB正:
-- `client_meetings`
-
-方針:
-- 初期実装では Clients 詳細配下の関連情報として扱う
-- 独立画面化は Phase 3 以降
+加えて、実 DB 名優先ポリシーを維持すること（例: `org_id`, `owner_name`, `client_meetings` など）。
 
 ---
 
-## 5. API一覧と契約方針
+## API routes already implemented vs still needed
 
-## 5.1 共通レスポンス方針
-成功:
-```json
-{ "ok": true, "data": ... }
-```
+### Already implemented (確認済み/存在確認)
 
-失敗:
-```json
-{ "ok": false, "error": "..." }
-```
+- `POST /api/meetings`
+- `POST /api/meetings/[meetingId]/generate-proposals`
+- `GET /api/ai-proposals/[proposalId]`
+- `POST /api/ai-proposals/[proposalId]/approve`
+- `POST /api/job-revisions/[revisionId]/queue-publish`
+- `GET /api/runs/[runId]`
+- 付随: `GET /api/runs`, `GET /api/jobs`, `GET /api/clients`, `GET /api/todos`
 
-補足:
-- 必要に応じて `meta` を追加可
-- 一覧では `data: []`
-- 詳細では `data: { ... }`
+### Still needed / hardening needed
 
-## 5.2 一覧API
-### `GET /api/clients`
-返却:
-- `id`
-- `name`
-- `owner_name`
-- `memo`
-
-### `GET /api/jobs`
-返却:
-- `id`
-- `client_id`
-- `internal_title`
-- `status`
-
-### `GET /api/runs`
-返却:
-- `id`
-- `run_type`
-- `channel`
-- `file_format`
-- `status`
-- `executed_at`
-- `completed_at`
-
-### `GET /api/todos`
-返却:
-- `id`
-- `title`
-- `status`
-- `assigned_to`
-- `due_date`
-- `completed_at`
-
-## 5.3 詳細API
-IDは全て Zod で検証する。  
-存在しないIDは 404。
-
-### `GET /api/clients/[id]`
-返却:
-- client本体
-- channel_accounts
-- airwork_locations
-- jobs
-- client_meetings
-
-### `GET /api/jobs/[id]`
-返却:
-- job本体
-- job_postings
-- job_revisions
-- ai_proposals
-
-### `GET /api/runs/[id]`
-返却:
-- run本体
-- run_items
-
-### `GET /api/todos/[id]`
-返却:
-- todo本体
+- `ai_proposals` の状態遷移 API（review/apply の分離または approve の拡張）
+- `job_postings` への「承認済み current revision」反映 API（安全更新）
+- 監査ログ不足箇所への追記（proposal 生成/承認、publish queue）
+- Phase 1 API 一連フローのテスト用補助 endpoint または fixture 整備
+- Phase 2 で必要な execute/import-result 系 API の設計確定（本実装は Phase 2）
 
 ---
 
-## 6. 認証・認可方針
+## UI tasks still needed
 
-基本方針:
-- ログインユーザー前提
-- 認証済みでない画面・APIは利用不可
-- 実装初期は簡易保護でも、以後全画面保護へ寄せる
+最小 UI（Phase 1 完遂のため）:
 
-推奨:
-- middleware または共通 auth helper で保護
-- APIごとに `org_id` で絞る
-- クライアントからの `org_id` 信頼禁止
+1. 会議作成画面（meeting note 登録）
+2. 提案レビュー画面（summary / before-after diff / approve）
+3. 承認後キュー投入 UI（queue-publish）
+4. Run 詳細画面での対象・状態可視化
 
-最低限守ること:
-- DB問い合わせ時に org 境界を考慮する
-- `id` 単独検索だけで全件参照させない
-- 権限不足時は 403
+画面方針:
+- 既存コンポーネント（`PageHeader`, `SectionCard`, `StatusBadge`, `DiffViewer`）を優先利用
+- ビジネスロジックは route handler / server action に集約
+- エラーは `{ ok: false, error }` を UI 下部に明示表示
 
 ---
 
-## 7. 共通UI部品一覧
+## Gemini integration hardening tasks
 
-最優先で整備する部品:
-- `PageHeader`
-- `SectionCard`
-- `StatusBadge`
-- `EmptyState`
-- `LoadingState`
-- `ErrorState`
-- `DataTable`
-- `SummaryCard`
-- `FilterBar`
-
-## 7.1 PageHeader
-役割:
-- タイトル
-- 説明
-- 右側アクション配置
-
-## 7.2 SectionCard
-役割:
-- 白背景カード
-- 共通余白
-- 柔らかいシャドウ
-- 角丸
-
-## 7.3 StatusBadge
-役割:
-- 各ステータスの色分け表示
-
-## 7.4 EmptyState
-役割:
-- データ0件のガイド表示
-
-表示例:
-- データがありません
-- 条件を変更してください
-- 新規作成してください
-
-## 7.5 LoadingState
-役割:
-- 読み込み中表示
-
-方針:
-- スケルトンまたはシンプルなプレースホルダ
-- 派手なアニメーションは禁止
-
-## 7.6 ErrorState
-役割:
-- API失敗時表示
-- 再試行導線
-
-## 7.7 DataTable
-役割:
-- 一覧表示の標準部品
-
-標準仕様:
-- ヘッダ
-- 行クリック
-- 省略記法
-- 空状態
+1. **入力コンテキスト強化**
+   - 現行 job revision（最新 approved）を取得し、提案生成に必ず同梱
+   - before/after diff 精度を上げるため、proposal 保存前にサーバー側正規化
+2. **出力検証強化**
+   - Gemini 出力 JSON を Zod で検証
+   - 不正形式時は proposal を保存せず `ok: false` を返却
+3. **監査性向上**
+   - prompt version / model / request hash を audit または proposal metadata に保持
+4. **安全弁**
+   - 長文入力時のトークン上限・切り詰めポリシーを明文化
 
 ---
 
-## 8. デザイン適用方針
+## Remaining implementation tasks grouped by Phase 1 / Phase 2 / Phase 3
 
-凍結されたデザイン仕様を画面実装時に反映する。
+### Phase 1（最優先: API 完成度 + 最小 UI + 監査）
 
-## 8.1 カラースキーム
-- ベース: `#F9F9F9`
-- プライマリ: `#4A90E2`
-- セカンダリ: `#50E3C2`
-- アクセント1: `#FFD166`
-- アクセント2: `#F25F5C`
-- アクセント3: `#9D59EC`
+#### P1-1: `job_postings` を安全に approved revision 参照へ更新
+- Objective: 承認済み revision を publish 対象として一意に参照可能にする
+- Target: `src/app/api/ai-proposals/[proposalId]/approve`, `src/lib/db/**`
+- Expected changes:
+  - トランザクション内で revision 作成 + posting 側参照更新（または publish 時参照確定）
+  - `payload_hash` 必須チェック
+- Validation:
+  - approve → posting 参照更新が同時成功/同時失敗
+  - 異常系で部分更新なし
+- Risk:
+  - 既存 publish 判定ロジックとの競合
 
-## 8.2 表現ルール
-- セクションを明確に分ける
-- カードは大きめの角丸
-- 柔らかいドロップシャドウ
-- 2px線画＋塗りアイコン
-- 装飾はドット、波線、パターン
-- グラフはフラット
-- トランジションは控えめ
+#### P1-2: `ai_proposals` status lifecycle の実装/整合
+- Objective: `draft/in_review/approved/rejected/applied` の遷移整合を担保
+- Target: proposal 関連 route + validator + DB helper
+- Expected changes:
+  - 許可遷移外更新を拒否
+  - `approved_revision_id` の扱いを統一
+- Validation:
+  - 各遷移の正常/異常テスト
+- Risk:
+  - 既存 `approve` endpoint 互換性
 
-## 8.3 実装順
-1. 共通トークン
-2. 共通部品
-3. 一覧画面
-4. 詳細画面
-5. グラフ・装飾
+#### P1-3: 最小 UI 接続（meeting / proposal / approve / queue）
+- Objective: API 主線を UI から手動完走可能にする
+- Target: `src/app/meetings/**`, `src/app/jobs/[jobId]/ai/**`, `src/app/runs/**`
+- Expected changes:
+  - meeting 作成フォーム
+  - proposal 詳細 + diff + approve ボタン
+  - queue-publish 実行導線
+- Validation:
+  - ブラウザ操作で 1 ジョブの end-to-end 完走
+- Risk:
+  - UI 先行で仕様逸脱
 
----
+#### P1-4: 提案生成 diff 精度改善
+- Objective: 現行 revision を基準に before/after を安定生成
+- Target: generate-proposals route + ai service
+- Expected changes:
+  - 最新 approved revision 取得ロジック追加
+  - fallback（revision 不在時は posting 現在値）
+- Validation:
+  - 日本語含むノートで差分が正しく表示
+- Risk:
+  - 既存データ不整合時の比較対象欠落
 
-## 9. ステータス定義
+#### P1-5: audit logging 補完
+- Objective: 承認・キュー投入・生成失敗の監査証跡を欠損なく記録
+- Target: proposal approve/generate, queue-publish route
+- Expected changes:
+  - `audit_logs` への actor / action / target / timestamp の保存
+- Validation:
+  - 成功・失敗双方で監査記録を確認
+- Risk:
+  - ログ過多、個人情報の過記録
 
-## 9.1 Job Revision Status
-候補:
-- `draft`
-- `in_review`
-- `approved`
-- `rejected`
+#### P1-6: Phase 1 API flow テスト追加
+- Objective: 回帰を防ぐ最小自動テストを追加
+- Target: `tests/**` または route 単体テスト
+- Expected changes:
+  - meeting → proposal → approve → queue → run get の統合テスト
+  - enum 制約違反テスト（`source`, `run_type`）
+- Validation:
+  - CI で再現可能
+- Risk:
+  - DB fixture メンテコスト
 
-表示方針:
-- draft: muted
-- in_review: primary
-- approved: secondary
-- rejected: accent-2
+#### P1-7: `current_revision_id` 戦略の確定
+- Objective: schema 拡張有無を含め安全な参照戦略を決定
+- Target: `Docs/db/**`, route 実装方針
+- Expected changes:
+  - Option A: `job_postings.current_revision_id` 追加
+  - Option B: latest approved をクエリ算出
+  - 決定理由と rollback 方針を文書化
+- Validation:
+  - 同時承認時の整合性シミュレーション
+- Risk:
+  - 追加カラム導入時の移行コスト
 
-## 9.2 AI Proposal Status
-候補:
-- `draft`
-- `generated`
-- `applied`
-- `dismissed`
+### Phase 2（adapter/publisher 本実装）
 
-表示方針:
-- generated: accent-3
-- applied: secondary
-- dismissed: muted/error寄り
+#### P2-1: publish adapter interface + Airwork adapter 設計確定
+- Objective: 実行層の抽象化と媒体依存隔離
+- Dependency: P1-1, P1-2
 
-## 9.3 Run Status
-候補:
-- `draft`
-- `queued`
-- `executing`
-- `completed`
-- `failed`
+#### P2-2: run execute / result import の信頼性実装
+- Objective: idempotency / retry / partial failure を運用可能にする
+- Dependency: P2-1
 
-表示方針:
-- queued: primary薄色
-- executing: primary
-- completed: secondary
-- failed: accent-2
+#### P2-3: credential_ref 前提の資格情報運用に移行
+- Objective: 秘密情報の参照抽象化
+- Dependency: P2-1
 
-## 9.4 Todo Status
-候補:
-- `open`
-- `in_progress`
-- `done`
-- `blocked`
-- `canceled`
+#### P2-4: Phase 2 handoff package 作成
+- Objective: API 契約・実行状態遷移・障害時手順を handoff 文書化
+- Dependency: P2-1〜P2-3
 
-表示方針:
-- open: muted
-- in_progress: primary
-- done: secondary
-- blocked: accent-2
-- canceled: muted
+### Phase 3（freshness 自動化）
 
-注意:
-- 実DB値が異なる場合、初期は actual DB value を正とする
-- UI表示文言だけ変換してよい
+#### P3-1: `/api/cron/freshness` 本実装
+- 14日判定 → candidate 更新 → ToDo/proposal queue
 
----
+#### P3-2: freshness ダッシュボード運用指標の整備
+- 検知件数、処理遅延、失敗率
 
-## 10. 一覧画面の共通ルール
-
-- 既定ソートは `updated_at desc` を優先
-- 該当列が無ければ業務上意味のある列で代替
-- nullable 値は `—` 表示
-- 日時はローカル表示に統一
-- 長文メモは省略表示
-- 行アクションは最小限
-- 初期段階ではページングなしでも可
-- 件数が増えたら検索・フィルタを追加
-
----
-
-## 11. エラー・空状態・ローディング方針
-
-## 11.1 Empty
-- データ0件を正常系として扱う
-- 次アクションを示す
-
-## 11.2 Error
-- 内部エラー詳細は出さない
-- 画面には簡潔な文言
-- 再試行ボタンを用意
-
-## 11.3 Loading
-- 画面全体ロックではなく部分読み込み優先
-- ちらつきの強い演出は避ける
+#### P3-3: 監査と運用 SLO の定着
+- 日次レビュー手順、アラート方針
 
 ---
 
-## 12. DBアクセス方針
+## Detailed step-by-step task order for the next implementation wave
 
-- SQLは server-side only
-- route handler を薄く保つ
-- クエリは `src/lib/db/**` に寄せる
-- actual DB names を使う
-- UI向けの名前は mapper で変換する
+次の 1 スプリントで実行する推奨順:
 
-推奨構成:
-- `src/lib/db/schema.ts`
-- `src/lib/db/mappers.ts`
-- `src/types/db-schema.ts`
-- 将来的に `src/lib/db/queries/*.ts`
-
-禁止:
-- client component から DBアクセス
-- SQLで logical name を使う
-- 生の文字列結合SQL
+1. P1-7 `current_revision_id` 戦略決定（ドキュメント確定先行）
+2. P1-1 posting 参照更新の安全実装（トランザクション化）
+3. P1-2 proposal status lifecycle 実装
+4. P1-4 Gemini diff 精度改善（現行 revision 参照）
+5. P1-5 audit logging 補完
+6. P1-3 最小 UI 接続
+7. P1-6 API 統合テスト追加
+8. 受け入れ検証（手動 E2E + CI）
 
 ---
 
-## 13. 監査ログ方針
+## Dependency map (what must be done before what)
 
-対象:
-- 作成
-- 更新
-- ステータス変更
-- 実行
-- 取り込み
+- `current_revision_id` 戦略決定 → posting 更新実装・diff 精度改善の前提
+- posting 更新安全化 + proposal status lifecycle → queue-publish 安定化の前提
+- audit logging 補完 → 本番運用開始判定の前提
+- API 安定化（P1-1,2,4,5）→ UI 接続（P1-3）
+- Phase 1 API テスト整備（P1-6）→ Phase 2 adapter 実装着手条件
 
-現DB前提:
-- `audit_logs.detail`
-- `audit_logs.actor_user_id`
+簡易依存グラフ:
 
-方針:
-- 初期は detail に JSON を集約
-- before/after 分割は現DB移行後に検討
+`P1-7 -> P1-1 -> P1-2 -> P1-3`
 
----
+`P1-7 -> P1-4 -> P1-3`
 
-## 14. Seed / ローカル検証方針
-
-最低限必要な検証データ:
-- 1 organization
-- 複数 clients
-- 各 client の channel_accounts
-- airwork_locations
-- jobs
-- runs
-- todos
-- client_meetings
-
-ローカル確認項目:
-- 一覧0件
-- 一覧複数件
-- 不正ID詳細
-- APIエラー
-- org絞り込み
+`P1-1/P1-2/P1-5 -> P1-6 -> Phase 2`
 
 ---
 
-## 15. 完了条件
+## Verification checklist per task
 
-Phase 1 完了条件:
-- `/clients`, `/jobs`, `/runs`, `/todos` が表示可能
-- API接続済み
-- empty/loading/error 対応済み
-- StatusBadge 適用済み
-- actual DB name ベースで実装済み
-- `pnpm exec tsc --noEmit` 通過
-- `pnpm lint` 通過
+共通チェック（各タスク完了時）:
 
-Phase 2 完了条件:
-- 詳細画面4本が遷移可能
-- 関連データ表示
-- 404/権限エラー処理済み
+- [ ] `pnpm exec tsc --noEmit`
+- [ ] `pnpm lint`
+- [ ] 変更 API の正常系/異常系を curl で確認
+- [ ] `ok: false` 時に秘密情報やスタックトレースを返していない
+- [ ] SQL が parameterized である
+- [ ] DB/Blob/Gemini 呼び出しが server-only である
 
----
+Phase 1 受け入れチェック:
 
-## 16. Codex向け実装ルール
-
-- 1タスク = 1機能単位
-- 最小差分
-- 既存構造尊重
-- route handler は薄く
-- SQLは actual DB names
-- mapper で UI/domain alias を吸収
-- 画面実装時に共通UIを使い回す
-- secrets は server-only
-- 変更時は関連 docs も更新
+- [ ] meetings 作成 → proposals 生成 → proposal 参照 → approve → queue-publish → run 参照 が連続成功
+- [ ] `job_revisions.source` 不正値を拒否
+- [ ] `runs.run_type` 不正値を拒否
+- [ ] `payload_hash` 欠落時に revision 作成を拒否
+- [ ] 日本語本文（UTF-8）で文字化けなく処理可能
 
 ---
 
-## 17. 直近の実装優先順位
+## Encoding / UTF-8 handling notes
 
-1. 共通UI追加
-   - EmptyState
-   - LoadingState
-   - ErrorState
-   - SummaryCard
-   - DataTable
-
-2. read API追加
-   - `GET /api/clients`
-   - `GET /api/jobs`
-   - `GET /api/runs`
-   - `GET /api/todos`
-
-3. 一覧画面接続
-   - `/clients`
-   - `/jobs`
-   - `/runs`
-   - `/todos`
-
-4. 詳細APIと詳細画面
-
-5. 認証・org絞り込み強化
+- API の JSON body は UTF-8 を明示（`Content-Type: application/json; charset=utf-8`）
+- PowerShell からの検証時は UTF-8 送信設定を統一
+- meeting note / proposal summary / diff フィールドは UTF-8 前提で DB 保存
+- ログ出力時にバイト列をそのまま吐かず、必要最小限のメタ情報のみ記録
 
 ---
 
-## 18. 保存先推奨
+## Technical debt / cleanup tasks
 
-本書は以下に保存する。
+1. proposal/approve 系 route の責務分離（validation / domain / persistence）
+2. DB クエリ共通化（重複 SQL の helper 化）
+3. run/status 列挙値の validator 一元化
+4. API エラーコード粒度の統一（400/404/409/500）
+5. `/api/cron/freshness` スタブ解消の準備（feature flag 含む）
 
-- `Docs/implementation-plan.md`
+---
 
-必要に応じて関連文書:
-- `Docs/db/db-alignment-policy.md`
-- `Docs/db/actual-db-mapping-notes.md`
-- `Docs/design/basic-design-v2.md`
-- `Docs/design/detailed-design-v2.md`
-- `AGENTS.md`
+## Recommended commit slicing for Codex Cloud execution
+
+1. `docs: define phase1 remaining tasks and dependency map`
+   - 本手順書更新のみ
+2. `feat: enforce approved revision linkage and proposal lifecycle`
+   - P1-1/P1-2
+3. `feat: improve proposal diff context and add audit logging`
+   - P1-4/P1-5
+4. `feat: add minimal phase1 ui flow for meeting proposal approval`
+   - P1-3
+5. `test: add phase1 api flow integration tests`
+   - P1-6
+6. `docs: phase2 adapter publisher handoff package`
+   - P2-4 先行文書化
+
+---
+
+## Implementation notes for Phase 2 adapter/publisher design handoff
+
+handoff に最低限含める内容:
+
+- Adapter interface（prepare/publish/normalize）の TypeScript 契約
+- `runs` / `run_items` 状態遷移図
+- idempotency key 生成・重複時挙動
+- 障害分類（外部 API 障害 / データ不整合 / 認証失敗）
+- 再試行戦略（回数、間隔、打ち切り条件）
+- 監査ログ項目と保存方針
+
