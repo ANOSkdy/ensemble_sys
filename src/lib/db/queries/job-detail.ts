@@ -1,5 +1,7 @@
 import "server-only"
+import { type AiProposalStatus } from "@/lib/constants/db-enums"
 import { sql } from "@/lib/db/client"
+import { getAiProposalsByJobPosting } from "@/lib/db/queries/ai-proposals"
 
 export type JobDetail = {
   id: string
@@ -26,7 +28,7 @@ export type JobRevisionRow = {
 export type JobAiProposalRow = {
   id: string
   thinking_level: string | null
-  status: string | null
+  status: AiProposalStatus
   meeting_id: string | null
 }
 
@@ -37,7 +39,17 @@ export type JobDetailResult = {
   aiProposals: JobAiProposalRow[]
 }
 
-export async function getJobDetail(id: string): Promise<JobDetailResult> {
+export type GetJobDetailInput = {
+  id: string
+  proposalStatus?: AiProposalStatus
+}
+
+export async function getJobDetail(
+  input: GetJobDetailInput | string,
+): Promise<JobDetailResult> {
+  const normalizedInput: GetJobDetailInput =
+    typeof input === "string" ? { id: input } : input
+
   const jobRows = await sql`
     select
       id::text,
@@ -47,7 +59,7 @@ export async function getJobDetail(id: string): Promise<JobDetailResult> {
       status,
       null::text as memo
     from jobs
-    where id::text = ${id}
+    where id::text = ${normalizedInput.id}
     limit 1
   `
 
@@ -57,9 +69,11 @@ export async function getJobDetail(id: string): Promise<JobDetailResult> {
       channel,
       publish_status_cache
     from job_postings
-    where job_id::text = ${id}
+    where job_id::text = ${normalizedInput.id}
     order by id desc
   `
+
+  const postingIds = (postings as { id: string }[]).map((posting) => posting.id)
 
   const revisions = await sql`
     select
@@ -69,28 +83,25 @@ export async function getJobDetail(id: string): Promise<JobDetailResult> {
       status
     from job_revisions
     where job_posting_id in (
-      select id from job_postings where job_id::text = ${id}
+      select id from job_postings where job_id::text = ${normalizedInput.id}
     )
     order by id desc
   `
 
-  const aiProposals = await sql`
-    select
-      id::text,
-      thinking_level,
-      null::text as status,
-      meeting_id::text
-    from ai_proposals
-    where job_posting_id in (
-      select id from job_postings where job_id::text = ${id}
-    )
-    order by id desc
-  `
+  const aiProposals = await getAiProposalsByJobPosting({
+    jobPostingIds: postingIds,
+    status: normalizedInput.proposalStatus,
+  })
 
   return {
     job: (jobRows[0] as JobDetail | undefined) ?? null,
     postings: postings as JobPostingRow[],
     revisions: revisions as JobRevisionRow[],
-    aiProposals: aiProposals as JobAiProposalRow[],
+    aiProposals: aiProposals.map((proposal) => ({
+      id: proposal.id,
+      thinking_level: proposal.thinking_level,
+      status: proposal.status,
+      meeting_id: proposal.meeting_id,
+    })),
   }
 }

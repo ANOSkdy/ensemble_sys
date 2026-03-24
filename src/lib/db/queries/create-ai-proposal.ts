@@ -1,4 +1,6 @@
-﻿import "server-only"
+import "server-only"
+import { AI_PROPOSAL_INITIAL_STATUS } from "@/lib/ai-proposals/status-lifecycle"
+import { type AiProposalStatus } from "@/lib/constants/db-enums"
 import { sql } from "@/lib/db/client"
 
 export type CreateAiProposalInput = {
@@ -19,6 +21,7 @@ export type AiProposalRow = {
   input_prompt: string
   model: string
   thinking_level: string
+  status: AiProposalStatus
   output_json: unknown
   created_at: string
 }
@@ -34,6 +37,7 @@ export async function createAiProposal(
       input_prompt,
       model,
       thinking_level,
+      status,
       output_json
     )
     values (
@@ -43,6 +47,7 @@ export async function createAiProposal(
       ${input.input_prompt},
       ${input.model},
       ${input.thinking_level},
+      ${AI_PROPOSAL_INITIAL_STATUS},
       ${JSON.stringify(input.output_json)}::jsonb
     )
     returning
@@ -53,6 +58,7 @@ export async function createAiProposal(
       input_prompt,
       model,
       thinking_level,
+      status,
       output_json,
       created_at::text
   `

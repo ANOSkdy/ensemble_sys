@@ -1,5 +1,6 @@
 ﻿import { z } from "zod"
 import {
+  AI_PROPOSAL_STATUSES,
   JOB_STATUSES,
   RUN_CHANNELS,
   RUN_FILE_FORMATS,
@@ -68,6 +69,8 @@ export const proposalApproveSchema = z.object({
   approved_by: postgresUuidSchema,
 })
 
+export const proposalStatusSchema = z.enum(AI_PROPOSAL_STATUSES)
+
 export const queuePublishRunSchema = z.object({
   org_id: postgresUuidSchema,
   client_id: postgresUuidSchema,
@@ -78,4 +81,3 @@ export const queuePublishRunSchema = z.object({
   run_type: z.enum(RUN_TYPES).default(RUN_TYPES[0]),
   file_format: z.enum(RUN_FILE_FORMATS).default(RUN_FILE_FORMATS[0]),
 })
-

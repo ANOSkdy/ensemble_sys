@@ -8,5 +8,5 @@ export type ApproveAiProposalInput = {
 export async function approveAiProposal(
   input: ApproveAiProposalInput,
 ): Promise<Awaited<ReturnType<typeof getAiProposalDetail>>> {
-  return getAiProposalDetail(input.proposal_id)
+  return getAiProposalDetail({ id: input.proposal_id })
 }

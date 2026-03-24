@@ -42,8 +42,12 @@ export async function POST(
   } catch (error) {
     console.error("POST /api/ai-proposals/[proposalId]/approve failed", error)
 
-    if (error instanceof Error && error.message === "AI proposal already approved.") {
-      return NextResponse.json({ ok: false, error: "proposal already approved" }, { status: 409 })
+    if (
+      error instanceof Error &&
+      (error.message === "AI proposal already approved." ||
+        error.message === "AI proposal status transition is invalid.")
+    ) {
+      return NextResponse.json({ ok: false, error: "invalid proposal status transition" }, { status: 409 })
     }
 
     if (error instanceof Error && error.message === "AI proposal not found.") {

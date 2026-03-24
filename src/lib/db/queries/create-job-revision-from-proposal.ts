@@ -1,8 +1,13 @@
 import "server-only"
 import { createHash } from "node:crypto"
 import {
+  canTransitionAiProposalStatus,
+  isAiProposalStatus,
+} from "@/lib/ai-proposals/status-lifecycle"
+import {
   JOB_REVISION_SOURCES,
   JOB_REVISION_STATUSES,
+  type AiProposalStatus,
   type JobRevisionSource,
   type JobRevisionStatus,
 } from "@/lib/constants/db-enums"
@@ -49,6 +54,7 @@ export async function createJobRevisionFromProposal(
       org_id::text,
       job_posting_id::text,
       output_json,
+      status,
       job_revision_id::text as job_revision_id
     from ai_proposals
     where id::text = ${input.proposal_id}
@@ -62,12 +68,21 @@ export async function createJobRevisionFromProposal(
         org_id: string
         job_posting_id: string
         output_json: unknown
+        status: string
         job_revision_id: string | null
       }
     | undefined
 
   if (!proposal) {
     throw new Error("AI proposal not found.")
+  }
+
+  if (!isAiProposalStatus(proposal.status)) {
+    throw new Error("AI proposal status is invalid.")
+  }
+
+  if (!canTransitionAiProposalStatus(proposal.status, "approved")) {
+    throw new Error("AI proposal status transition is invalid.")
   }
 
   if (proposal.job_revision_id) {
@@ -123,9 +138,12 @@ export async function createJobRevisionFromProposal(
         updated_at::text
     ), linked_proposal as (
       update ai_proposals p
-      set job_revision_id = inserted_revision.id::uuid
+      set
+        job_revision_id = inserted_revision.id::uuid,
+        status = ${"approved" satisfies AiProposalStatus}
       from inserted_revision
       where p.id::text = ${proposal.id}
+        and p.status = ${proposal.status}
       returning p.id
     )
     update job_postings jp
@@ -155,7 +173,7 @@ export async function createJobRevisionFromProposal(
   const created = rows[0] as JobRevisionRow | undefined
 
   if (!created) {
-    throw new Error("Failed to create job revision from proposal.")
+    throw new Error("AI proposal status transition is invalid.")
   }
 
   const jobPosting = await getJobPostingCurrentRevision(
