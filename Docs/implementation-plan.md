@@ -1,663 +1,406 @@
-# 実装方針書（画面・API・共通UI・ステータス定義）
+# 実装計画書（Phase 1 実装済み後の残タスク 10PR）
 
 ## 1. 目的
 
-本書は、`airwork-ops-console` の今後の実装を Codex 主導で安全かつ効率的に進めるために、画面一覧、API一覧、共通UI、ステータス定義、認証方針、DBアクセス方針を固定するための実装方針書である。  
-Neon 実DBを正とし、設計書・AGENTS.md・実装コードの整合を取りながら、最小差分で段階的に構築する。  
-本書は、基本設計書・詳細設計書・`Docs/db/schema-diff-report.md`・`Docs/db/db-alignment-policy.md` を踏まえた実装用の運用基準とする。
+本書は、Phase 1 の API 主線（会議登録 → AI 提案生成 → 承認 → job_revision 作成 → manual publish run 作成）が通った現状を前提に、次の 10 本の PR を **実装順で固定**する実行計画書である。  
+以後の Codex 実装は本書の PR 単位を最小実装単位として扱い、Neon 実 DB 制約・Vercel デプロイ互換・server-only 秘密管理を崩さないことを最優先とする。
 
 ---
 
-## 2. 前提方針
+## 2. 適用前提（固定）
 
-- リポジトリ: `C:\dev\airwork-ops-console`
-- デプロイ先: Vercel
 - フレームワーク: Next.js App Router + TypeScript
-- パッケージマネージャ: pnpm
-- 主DB: Neon Postgres
-- DBの正: **live Neon schema**
-- DB命名の正: `org_id`, `owner_name`, `memo`, `internal_title`, `file_format`, `file_sha256`, `actor_user_id`, `client_meetings`
-- DBアクセス: server-only
-- runtime: DB利用APIは原則 `nodejs`
-- client bundleに秘密情報を出さない
-- APIは `{ ok: true } / { ok: false }` 形式を基本とする
+- 実行環境: Vercel（GitHub 連携）
+- DB: Neon Postgres（live schema を正）
+- DB アクセス: server-only（Route Handler / Server Action / server component）
+- runtime: DB 利用 API は `nodejs`
+- API 形式: `{ ok: true, ... }` / `{ ok: false, error: "..." }`
+- SQL: 必ずパラメータ化、文字列連結禁止
+- 入力検証: Zod を必須
 
 ---
 
-## 3. 実装フェーズ
+## 3. Current Baseline（実装済みの事実）
 
-## Phase 1: 読み取り中心の一覧画面
-最優先で実装する画面とAPI:
-- `/clients`
-- `/jobs`
-- `/runs`
-- `/todos`
+Phase 1 時点で、以下は既に実装されている前提で次フェーズを分割する。
 
-対応API:
-- `GET /api/clients`
-- `GET /api/jobs`
-- `GET /api/runs`
-- `GET /api/todos`
-
-目的:
-- Neon実DBとの接続確認
-- actual schema ベースの read 実装確立
-- 共通UI部品の定着
-- empty / loading / error の統一
-
-## Phase 2: 詳細画面
-- `/clients/[clientId]`
-- `/jobs/[jobId]`
-- `/runs/[runId]`
-- `/todos/[todoId]`
-
-対応API:
-- `GET /api/clients/[id]`
-- `GET /api/jobs/[id]`
-- `GET /api/runs/[id]`
-- `GET /api/todos/[id]`
-
-目的:
-- 関連データ表示
-- 遷移整合
-- ステータス表示の具体化
-
-## Phase 3: 作成・編集導線
-- `/clients/new`
-- `/jobs/new`
-- `/jobs/[jobId]/edit`
-- `/todos/[todoId]/edit`
-
-対応API:
-- `POST /api/clients`
-- `POST /api/jobs`
-- `PATCH /api/jobs/[id]`
-- `PATCH /api/todos/[id]`
-
-目的:
-- Zod検証
-- DB更新
-- audit_logs運用開始
-
-## Phase 4: 業務コア
-- revision 管理
-- AI proposal 管理
-- run 生成
-- result import
-- freshness
+1. meeting creation API が配線済み
+   - `POST /api/meetings`
+2. proposal generation API が配線済み
+   - `POST /api/job-postings/[jobPostingId]/ai-proposals`
+3. approval → job_revision 作成が配線済み
+   - `POST /api/ai-proposals/[proposalId]/approve`
+   - 承認時に `job_revisions` を作成するクエリが存在
+4. queue publish run 作成が配線済み
+   - `POST /api/job-revisions/[revisionId]/queue-publish`
+   - `runs` と `run_items` を作成
+5. Gemini 連携（server-only）が導入済み
+   - `src/lib/ai/gemini/**` 経由で提案生成
+6. DB 制約で既に判明している値を踏んだ実装が存在
+   - `job_revisions.source` は現実装で `"ai"` を使用
+   - `runs.run_type` は現実装で `"update"` を使用
+7. PowerShell 表示上の日本語文字化けはクライアント表示問題として扱い、DB 保存値（日本語テキスト自体）は有効であることを前提化済み
 
 ---
 
-## 4. 画面一覧と責務
+## 4. Execution Rules for Future Codex PRs
 
-## 4.1 ホーム `/`
-役割:
-- 主要業務の入口
-- KPIカード表示
-- 一覧画面への導線
-
-表示内容:
-- Open ToDos
-- Recent Runs
-- Freshness Targets
-- Freshness Candidates
-- Recent Run Summary
-- Pending Tasks
-
-主アクション:
-- Clients / Jobs / Runs / ToDos へ遷移
-
-備考:
-- 初期段階では集計API未実装でも可
-- まずは導線優先
-
-## 4.2 Clients 一覧 `/clients`
-役割:
-- 取引先一覧の表示
-- 詳細画面への導線
-
-主要表示項目:
-- `name`
-- `owner_name`
-- `memo`
-- `created_at`（存在する場合）
-- `updated_at`（存在する場合）
-
-主アクション:
-- 詳細へ遷移
-- 新規作成
-
-対応API:
-- `GET /api/clients`
-
-完了条件:
-- 一覧表示
-- empty state
-- error state
-- row click または詳細リンク
-
-## 4.3 Client 詳細 `/clients/[clientId]`
-役割:
-- 取引先の基本情報表示
-- 関連リソース表示
-
-主要表示:
-- client基本情報
-- channel_accounts
-- airwork_locations
-- jobs
-- client_meetings
-
-対応API:
-- `GET /api/clients/[id]`
-
-## 4.4 Jobs 一覧 `/jobs`
-役割:
-- 求人系データの一覧表示
-
-主要表示項目:
-- `internal_title`
-- `status`
-- `client_id`
-- `updated_at`
-
-対応API:
-- `GET /api/jobs`
-
-## 4.5 Job 詳細 `/jobs/[jobId]`
-役割:
-- 求人基本情報
-- posting / revision / proposal へのハブ
-
-主要表示:
-- job基本情報
-- job_postings
-- job_revisions
-- ai_proposals
-
-対応API:
-- `GET /api/jobs/[id]`
-
-## 4.6 Runs 一覧 `/runs`
-役割:
-- 入稿実行履歴一覧
-
-主要表示項目:
-- `run_type`
-- `channel`
-- `file_format`
-- `status`
-- `executed_at`
-- `completed_at`
-
-対応API:
-- `GET /api/runs`
-
-## 4.7 Run 詳細 `/runs/[runId]`
-役割:
-- 実行対象、結果、エラーの詳細表示
-
-主要表示:
-- run本体
-- run_items
-- 結果サマリ
-
-対応API:
-- `GET /api/runs/[id]`
-
-## 4.8 ToDos 一覧 `/todos`
-役割:
-- ToDoの作業管理一覧
-
-主要表示項目:
-- `title`
-- `status`
-- `assigned_to`
-- `due_date`
-- `completed_at`
-
-対応API:
-- `GET /api/todos`
-
-## 4.9 Todo 詳細 `/todos/[todoId]`
-役割:
-- 作業内容、メモ、証跡表示
-
-主要表示:
-- `instructions`
-- `evidence_urls`
-- `status`
-- `completed_at`
-
-対応API:
-- `GET /api/todos/[id]`
-
-## 4.10 Meetings 系
-実DB正:
-- `client_meetings`
-
-方針:
-- 初期実装では Clients 詳細配下の関連情報として扱う
-- 独立画面化は Phase 3 以降
+1. 既存 DB 制約値に必ず合わせる（推測値を増やさない）。
+2. スキーマ追加は「必要性」「既存制約との整合」「移行手順」を確認できる場合のみ行う。
+3. 差分は最小化し、1PR1目的を厳守する。
+4. 秘密情報は server-only（`DATABASE_URL`/`NEON_DATABASE_URL`/`GEMINI_API_KEY` など）。
+5. ローカル検証や I/O で UTF-8 安全な扱いを維持する（表示問題と保存問題を混同しない）。
+6. 公開済みコンテンツを直接上書きしない。必ず revision を作成して反映する。
+7. 外部公開導線は引き続き `runs` / `run_items` を経由する。
 
 ---
 
-## 5. API一覧と契約方針
+## 5. 10 PR Roadmap
 
-## 5.1 共通レスポンス方針
-成功:
-```json
-{ "ok": true, "data": ... }
-```
+> 依存関係は「前 PR 完了」を基本とする。後続 PR は先行 PR の API 契約を前提に実装する。
 
-失敗:
-```json
-{ "ok": false, "error": "..." }
-```
+### PR1: 制約安全な定数・Enum 正規化（Phase 1 ハードニング）
 
-補足:
-- 必要に応じて `meta` を追加可
-- 一覧では `data: []`
-- 詳細では `data: { ... }`
+- **Objective**
+  - DB 制約に依存する値（status/source/run_type/action/channel/file_format）を定数化し、入力検証・クエリ・レスポンス整形の不一致を解消する。
+- **Why / User Value**
+  - 400/500 の偶発を減らし、以後の UI 接続時に値不一致バグを防ぐ。
+- **Exact Scope**
+  - 既存 API/クエリで文字列リテラル散在箇所を定数参照へ置換。
+  - `src/lib/validators/schemas.ts` の enum/literal を DB 制約準拠で再定義。
+  - `src/types/**` の型表現を定数と同期。
+- **Out of Scope**
+  - 新規機能追加、UI 追加、大規模ファイル移動。
+- **Affected Areas / Files / Directories**
+  - `src/lib/validators/schemas.ts`
+  - `src/lib/db/queries/create-job-revision-from-proposal.ts`
+  - `src/lib/db/queries/create-manual-publish-run.ts`
+  - `src/lib/db/queries/**`（対象箇所のみ）
+  - `src/types/**`
+  - `Docs/implementation-plan.md`（必要なら参照更新のみ）
+- **DB / Schema Impact**
+  - なし（コード側整合のみ）。
+- **API Impact**
+  - 既存契約維持。バリデーションエラー文言は明確化。
+- **UI Impact**
+  - 直接変更なし。
+- **Tests / Manual Verification**
+  - `pnpm exec tsc --noEmit`
+  - `pnpm lint`
+  - 主要 API の正常/異常入力を curl で確認。
+- **Dependencies**
+  - なし（起点 PR）。
+- **Risks / Rollback**
+  - リテラル変更漏れによる runtime エラー。ロールバックは定数導入コミット単位で revert。
+- **Acceptance Criteria**
+  - 主要 DB 制約値が 1 か所で定義され、対象 API が同じ値集合を使用している。
 
-## 5.2 一覧API
-### `GET /api/clients`
-返却:
-- `id`
-- `name`
-- `owner_name`
-- `memo`
+### PR2: 承認フローの `job_postings` 反映強化（current revision / status 連動）
 
-### `GET /api/jobs`
-返却:
-- `id`
-- `client_id`
-- `internal_title`
-- `status`
+- **Objective**
+  - proposal 承認時に `job_postings` 側へ current revision 参照と状態連動を実装する。
+- **Why / User Value**
+  - 「どの revision が現行か」を DB で一意に追跡でき、run 生成判断が安定する。
+- **Exact Scope**
+  - approve API 内のトランザクションを見直し、`job_revisions` 生成と `job_postings` 更新を同一整合単位にする。
+  - 必要に応じ `job_postings` 参照用クエリを追加。
+- **Out of Scope**
+  - proposal ステータス履歴拡張（PR3 で実施）。
+- **Affected Areas / Files / Directories**
+  - `src/app/api/ai-proposals/[proposalId]/approve/route.ts`
+  - `src/lib/db/queries/create-job-revision-from-proposal.ts`
+  - `src/lib/db/queries/job-postings*.ts`（新規/更新）
+  - `src/lib/validators/schemas.ts`
+- **DB / Schema Impact**
+  - 原則なし。既存列で実現不能な場合のみ、追加案を Docs に先出し（この PR では未 migration）。
+- **API Impact**
+  - approve レスポンスに `job_posting` の current revision 情報を追加（後方互換を保つ）。
+- **UI Impact**
+  - 直接変更なし（PR6/PR7 の表示基盤）。
+- **Tests / Manual Verification**
+  - approve 実行で `job_revisions` 作成 + `job_postings` 反映を DB 確認。
+  - 二重承認時の挙動確認（安全に失敗/冪等）。
+- **Dependencies**
+  - PR1。
+- **Risks / Rollback**
+  - 更新対象列の誤認。ロールバックは approve 内追加 UPDATE を revert。
+- **Acceptance Criteria**
+  - 承認後、対象 job_posting から current revision が追跡可能。
 
-### `GET /api/runs`
-返却:
-- `id`
-- `run_type`
-- `channel`
-- `file_format`
-- `status`
-- `executed_at`
-- `completed_at`
+### PR3: `ai_proposals` ステータスライフサイクル実装（状態遷移と検索）
 
-### `GET /api/todos`
-返却:
-- `id`
-- `title`
-- `status`
-- `assigned_to`
-- `due_date`
-- `completed_at`
+- **Objective**
+  - `ai_proposals` の状態遷移（generated / approved / rejected / applied 等）を API 一貫で扱う。
+- **Why / User Value**
+  - 提案の現在地を UI・運用双方で正確に把握できる。
+- **Exact Scope**
+  - review/approve/apply 系 API の更新ロジック統一。
+  - 提案一覧・詳細クエリに status フィルタ/並び順を追加。
+  - invalid transition を 409 で返す。
+- **Out of Scope**
+  - 差分 UI 改修（PR6）。
+- **Affected Areas / Files / Directories**
+  - `src/app/api/ai-proposals/**`
+  - `src/lib/db/queries/get-ai-proposal-detail.ts`
+  - `src/lib/db/queries/ai-proposals*.ts`（追加可）
+  - `src/lib/validators/schemas.ts`
+- **DB / Schema Impact**
+  - 既存 `ai_proposals` 列で対応。必要時は enum 値のみ docs 明記（migration なし）。
+- **API Impact**
+  - 提案系 API に status 遷移ルールを追加。
+- **UI Impact**
+  - PR5/PR6 の表示条件が明確化。
+- **Tests / Manual Verification**
+  - 正常遷移・不正遷移テスト。
+  - status フィルタ付き一覧取得確認。
+- **Dependencies**
+  - PR2。
+- **Risks / Rollback**
+  - 既存レコードの status 不整合。ロールバックは遷移バリデーションのみ段階無効化。
+- **Acceptance Criteria**
+  - 許可遷移のみ成功し、一覧/詳細で status が一貫表示される。
 
-## 5.3 詳細API
-IDは全て Zod で検証する。  
-存在しないIDは 404。
+### PR4: proposal 読み取り API の堅牢化（review/read とエラー報告改善）
 
-### `GET /api/clients/[id]`
-返却:
-- client本体
-- channel_accounts
-- airwork_locations
-- jobs
-- client_meetings
+- **Objective**
+  - proposal 関連 read/review API の入力検証、エラー分類、レスポンス整形を強化。
+- **Why / User Value**
+  - UI 接続時の障害切り分けが容易になり、運用中の調査コストが下がる。
+- **Exact Scope**
+  - 404/409/422/500 の返却基準を明示・統一。
+  - `ok: false` の `error` 文言と `code`（必要最小限）を統一。
+  - org 境界チェックの抜け漏れ補強。
+- **Out of Scope**
+  - 新しい業務ロジック追加。
+- **Affected Areas / Files / Directories**
+  - `src/app/api/ai-proposals/**`
+  - `src/app/api/job-revisions/**`
+  - `src/lib/auth/**`（必要時）
+  - `src/lib/validators/schemas.ts`
+- **DB / Schema Impact**
+  - なし。
+- **API Impact**
+  - エラー応答契約を安定化（breaking 回避）。
+- **UI Impact**
+  - PR5/PR6 でのエラー表示が実装しやすくなる。
+- **Tests / Manual Verification**
+  - 不正 UUID / 他 org / 不正状態で API 応答を確認。
+  - 主要 route の snapshot 的レスポンス確認。
+- **Dependencies**
+  - PR3。
+- **Risks / Rollback**
+  - エラー code 追加が既存 UI 互換に影響。ロールバックは code を optional 化。
+- **Acceptance Criteria**
+  - proposal 関連 API が統一的なエラー契約で返る。
 
-### `GET /api/jobs/[id]`
-返却:
-- job本体
-- job_postings
-- job_revisions
-- ai_proposals
+### PR5: Meeting 登録 UI + Proposal 生成 UI 接続
 
-### `GET /api/runs/[id]`
-返却:
-- run本体
-- run_items
+- **Objective**
+  - 会議登録から提案生成までの UI 導線を `/meetings/new`・ジョブ画面から操作可能にする。
+- **Why / User Value**
+  - 現在 API でしか使えないフローを運用担当が画面から実行できる。
+- **Exact Scope**
+  - 会議登録フォーム（Zod 準拠）
+  - proposal 生成トリガ UI（thinking_level/model 指定）
+  - 成功後の proposal 詳細遷移
+- **Out of Scope**
+  - proposal 差分レビュー UI（PR6）。
+- **Affected Areas / Files / Directories**
+  - `src/app/meetings/new/page.tsx`
+  - `src/app/jobs/[jobId]/ai/**`
+  - `src/components/**`（フォーム/状態表示の再利用範囲）
+  - `src/lib/validators/schemas.ts`（UI 入力との整合）
+- **DB / Schema Impact**
+  - なし。
+- **API Impact**
+  - 既存 API を利用（必要なら軽微なレスポンス項目追加）。
+- **UI Impact**
+  - meetings/proposal 生成導線を追加。
+- **Tests / Manual Verification**
+  - 画面操作で meeting 作成 → proposal 生成の完走確認。
+  - 空入力/不正入力時のエラー表示確認。
+- **Dependencies**
+  - PR4。
+- **Risks / Rollback**
+  - フォーム state 不整合。ロールバックは新規 UI ルート単位で revert。
+- **Acceptance Criteria**
+  - UI から meeting 登録と proposal 生成が成功し、生成結果へ遷移できる。
 
-### `GET /api/todos/[id]`
-返却:
-- todo本体
+### PR6: Proposal diff/review UI + 承認 UI 接続
+
+- **Objective**
+  - proposal の before/after diff、承認/却下/部分採用（仕様範囲内）を UI で実行可能にする。
+- **Why / User Value**
+  - AI 出力を人間レビュー前提で安全に扱える。
+- **Exact Scope**
+  - proposal 詳細画面でサマリ・diff・リスクメモを表示。
+  - approve/reject 操作を API 接続。
+  - 承認成功時に生成 revision 情報を表示。
+- **Out of Scope**
+  - publish run 画面統合（PR7）。
+- **Affected Areas / Files / Directories**
+  - `src/app/jobs/[jobId]/ai/[proposalId]/page.tsx`
+  - `src/components/DiffViewer*`（存在時）
+  - `src/components/StatusBadge*`
+  - `src/app/api/ai-proposals/**`（必要な軽微拡張のみ）
+- **DB / Schema Impact**
+  - なし。
+- **API Impact**
+  - review/approve API 利用、必要なら表示補助項目追加。
+- **UI Impact**
+  - proposal レビュー体験を実装。
+- **Tests / Manual Verification**
+  - approve/reject 操作と status 反映確認。
+  - diff 表示の日本語崩れが保存値由来でないことを確認。
+- **Dependencies**
+  - PR5。
+- **Risks / Rollback**
+  - 差分表示ロジック誤差。ロールバックは表示専用コンポーネントを分離 revert。
+- **Acceptance Criteria**
+  - proposal 詳細画面でレビュー・承認操作が完結する。
+
+### PR7: manual publish queue UI + Run 可視化強化
+
+- **Objective**
+  - 承認 revision から queue-publish を UI 実行し、run 作成結果を runs 画面で追跡しやすくする。
+- **Why / User Value**
+  - API 手打ち不要で運用フローが連続化する。
+- **Exact Scope**
+  - revision 画面に「queue publish」操作を追加。
+  - run 一覧/詳細に起点情報（job/revision/proposal）を明示。
+  - run_items の最小可視化改善。
+- **Out of Scope**
+  - 自動 execute ワーカー実装。
+- **Affected Areas / Files / Directories**
+  - `src/app/jobs/[jobId]/revisions/[revId]/page.tsx`
+  - `src/app/runs/page.tsx`
+  - `src/app/runs/[runId]/page.tsx`
+  - `src/app/api/job-revisions/[revisionId]/queue-publish/route.ts`
+  - `src/lib/db/queries/run-detail.ts`
+- **DB / Schema Impact**
+  - なし。
+- **API Impact**
+  - queue-publish 応答に run/run_item 要約を含める。
+- **UI Impact**
+  - queue 操作と run 可視化を追加。
+- **Tests / Manual Verification**
+  - UI から queue 実行 → runs 一覧/詳細反映を確認。
+  - 同 revision 二重 queue の扱いを確認。
+- **Dependencies**
+  - PR6。
+- **Risks / Rollback**
+  - 重複 run 発生。ロールバックは UI ボタンを feature-flag 相当で非表示化。
+- **Acceptance Criteria**
+  - 承認 revision から run 作成と可視化が UI で完結する。
+
+### PR8: Gemini 入力強化（現行 revision 文脈）と diff 品質改善
+
+- **Objective**
+  - proposal 生成時に current revision / 現在掲載情報を文脈注入し、差分品質を改善する。
+- **Why / User Value**
+  - 不要変更や幻覚差分を減らし、レビュー負荷を下げる。
+- **Exact Scope**
+  - 生成プロンプト組み立てに現行 revision payload を追加。
+  - 変更点抽出（diff summary）を deterministic に整形。
+  - 生成失敗時の再試行方針を最小実装（1 回まで等）で明示。
+- **Out of Scope**
+  - モデル切替基盤の大規模化。
+- **Affected Areas / Files / Directories**
+  - `src/lib/ai/gemini/**`
+  - `src/app/api/job-postings/[jobPostingId]/ai-proposals/route.ts`
+  - `src/lib/db/queries/job-detail.ts` または revision 取得クエリ
+  - `Docs/`（プロンプト方針の追記）
+- **DB / Schema Impact**
+  - なし。
+- **API Impact**
+  - proposal 生成レスポンスに diff quality 判定用メタを追加可（後方互換）。
+- **UI Impact**
+  - PR6 の diff 表示品質向上。
+- **Tests / Manual Verification**
+  - 同一入力で差分過多が減ることをサンプル比較。
+  - 生成失敗時のハンドリング確認。
+- **Dependencies**
+  - PR7。
+- **Risks / Rollback**
+  - プロンプト変更で出力劣化。ロールバックは旧プロンプトテンプレへ即時復帰。
+- **Acceptance Criteria**
+  - 現行 revision を踏まえた提案生成が行われ、diff の妥当性が目視で改善。
+
+### PR9: 監査ログ / 冪等性 / 再試行安全性の横断強化
+
+- **Objective**
+  - meeting→proposal→approve→queue の全 API に監査ログ・冪等防護・再試行安全策を入れる。
+- **Why / User Value**
+  - 本番運用時の二重実行や障害復旧時の事故を予防できる。
+- **Exact Scope**
+  - 主要 mutate API で監査ログ統一（actor/action/target/detail）。
+  - 重複実行検出キーの導入（ヘッダ/ボディいずれか）と最小実装。
+  - 再送時の安全応答（既処理なら既存結果を返す）。
+- **Out of Scope**
+  - 非同期ワーカー全体再設計。
+- **Affected Areas / Files / Directories**
+  - `src/app/api/meetings/route.ts`
+  - `src/app/api/job-postings/[jobPostingId]/ai-proposals/route.ts`
+  - `src/app/api/ai-proposals/[proposalId]/approve/route.ts`
+  - `src/app/api/job-revisions/[revisionId]/queue-publish/route.ts`
+  - `src/lib/db/queries/audit*.ts`（必要なら追加）
+- **DB / Schema Impact**
+  - 原則なし。必要なら既存 `audit_logs.detail` 活用で完結。
+- **API Impact**
+  - 冪等時のレスポンスコード/メッセージを明確化。
+- **UI Impact**
+  - エラー表示の解像度向上（PR5-7 の UX 改善）。
+- **Tests / Manual Verification**
+  - 同一 payload 連打時の重複抑止確認。
+  - 監査ログに主要操作が残ることを確認。
+- **Dependencies**
+  - PR8。
+- **Risks / Rollback**
+  - 厳格化しすぎで通常操作が弾かれる。ロールバックは idempotency 判定を optional 化。
+- **Acceptance Criteria**
+  - 主要 mutate API が再試行に対して安全かつ監査可能。
+
+### PR10: freshness 自動化準備（接続フック整備）
+
+- **Objective**
+  - 後続フェーズで freshness 自動化を接続できるよう、検知・候補化・ToDo 化のフックを追加する。
+- **Why / User Value**
+  - 14 日超過運用の導入コストを下げ、次フェーズへの移行を滑らかにする。
+- **Exact Scope**
+  - freshness 判定対象取得クエリの追加（read-only）。
+  - API フック（例: `/api/freshness/targets`）を最小実装。
+  - run/proposal と接続するためのインターフェース（stub）を docs とコードで定義。
+- **Out of Scope**
+  - 自動 proposal 作成・自動 publish 実行。
+- **Affected Areas / Files / Directories**
+  - `src/lib/db/queries/freshness*.ts`（新規）
+  - `src/app/api/freshness/**`（新規）
+  - `src/app/todos/**`（必要なら表示フックのみ）
+  - `Docs/phase-plan.md`
+  - `Docs/implementation-plan.md`
+- **DB / Schema Impact**
+  - 既存列で判定可能な範囲で実装。列不足時は docs に「追加候補」を記載し、PR 内 migration は行わない。
+- **API Impact**
+  - freshness 対象参照 API を追加（内部運用向け）。
+- **UI Impact**
+  - 必要最小限（候補件数表示程度）。
+- **Tests / Manual Verification**
+  - 14 日閾値判定の境界日テスト。
+  - API 返却内容が ToDo 生成前提で利用可能か確認。
+- **Dependencies**
+  - PR9。
+- **Risks / Rollback**
+  - 閾値解釈ミス。ロールバックは freshness API を内部 feature flag 扱いで無効化。
+- **Acceptance Criteria**
+  - freshness 後続開発で再利用可能な対象取得 API/クエリが揃う。
 
 ---
 
-## 6. 認証・認可方針
-
-基本方針:
-- ログインユーザー前提
-- 認証済みでない画面・APIは利用不可
-- 実装初期は簡易保護でも、以後全画面保護へ寄せる
-
-推奨:
-- middleware または共通 auth helper で保護
-- APIごとに `org_id` で絞る
-- クライアントからの `org_id` 信頼禁止
-
-最低限守ること:
-- DB問い合わせ時に org 境界を考慮する
-- `id` 単独検索だけで全件参照させない
-- 権限不足時は 403
-
----
-
-## 7. 共通UI部品一覧
-
-最優先で整備する部品:
-- `PageHeader`
-- `SectionCard`
-- `StatusBadge`
-- `EmptyState`
-- `LoadingState`
-- `ErrorState`
-- `DataTable`
-- `SummaryCard`
-- `FilterBar`
-
-## 7.1 PageHeader
-役割:
-- タイトル
-- 説明
-- 右側アクション配置
-
-## 7.2 SectionCard
-役割:
-- 白背景カード
-- 共通余白
-- 柔らかいシャドウ
-- 角丸
-
-## 7.3 StatusBadge
-役割:
-- 各ステータスの色分け表示
-
-## 7.4 EmptyState
-役割:
-- データ0件のガイド表示
-
-表示例:
-- データがありません
-- 条件を変更してください
-- 新規作成してください
-
-## 7.5 LoadingState
-役割:
-- 読み込み中表示
-
-方針:
-- スケルトンまたはシンプルなプレースホルダ
-- 派手なアニメーションは禁止
-
-## 7.6 ErrorState
-役割:
-- API失敗時表示
-- 再試行導線
-
-## 7.7 DataTable
-役割:
-- 一覧表示の標準部品
-
-標準仕様:
-- ヘッダ
-- 行クリック
-- 省略記法
-- 空状態
-
----
-
-## 8. デザイン適用方針
-
-凍結されたデザイン仕様を画面実装時に反映する。
-
-## 8.1 カラースキーム
-- ベース: `#F9F9F9`
-- プライマリ: `#4A90E2`
-- セカンダリ: `#50E3C2`
-- アクセント1: `#FFD166`
-- アクセント2: `#F25F5C`
-- アクセント3: `#9D59EC`
-
-## 8.2 表現ルール
-- セクションを明確に分ける
-- カードは大きめの角丸
-- 柔らかいドロップシャドウ
-- 2px線画＋塗りアイコン
-- 装飾はドット、波線、パターン
-- グラフはフラット
-- トランジションは控えめ
-
-## 8.3 実装順
-1. 共通トークン
-2. 共通部品
-3. 一覧画面
-4. 詳細画面
-5. グラフ・装飾
-
----
-
-## 9. ステータス定義
-
-## 9.1 Job Revision Status
-候補:
-- `draft`
-- `in_review`
-- `approved`
-- `rejected`
-
-表示方針:
-- draft: muted
-- in_review: primary
-- approved: secondary
-- rejected: accent-2
-
-## 9.2 AI Proposal Status
-候補:
-- `draft`
-- `generated`
-- `applied`
-- `dismissed`
-
-表示方針:
-- generated: accent-3
-- applied: secondary
-- dismissed: muted/error寄り
-
-## 9.3 Run Status
-候補:
-- `draft`
-- `queued`
-- `executing`
-- `completed`
-- `failed`
-
-表示方針:
-- queued: primary薄色
-- executing: primary
-- completed: secondary
-- failed: accent-2
-
-## 9.4 Todo Status
-候補:
-- `open`
-- `in_progress`
-- `done`
-- `blocked`
-- `canceled`
-
-表示方針:
-- open: muted
-- in_progress: primary
-- done: secondary
-- blocked: accent-2
-- canceled: muted
-
-注意:
-- 実DB値が異なる場合、初期は actual DB value を正とする
-- UI表示文言だけ変換してよい
-
----
-
-## 10. 一覧画面の共通ルール
-
-- 既定ソートは `updated_at desc` を優先
-- 該当列が無ければ業務上意味のある列で代替
-- nullable 値は `—` 表示
-- 日時はローカル表示に統一
-- 長文メモは省略表示
-- 行アクションは最小限
-- 初期段階ではページングなしでも可
-- 件数が増えたら検索・フィルタを追加
-
----
-
-## 11. エラー・空状態・ローディング方針
-
-## 11.1 Empty
-- データ0件を正常系として扱う
-- 次アクションを示す
-
-## 11.2 Error
-- 内部エラー詳細は出さない
-- 画面には簡潔な文言
-- 再試行ボタンを用意
-
-## 11.3 Loading
-- 画面全体ロックではなく部分読み込み優先
-- ちらつきの強い演出は避ける
-
----
-
-## 12. DBアクセス方針
-
-- SQLは server-side only
-- route handler を薄く保つ
-- クエリは `src/lib/db/**` に寄せる
-- actual DB names を使う
-- UI向けの名前は mapper で変換する
-
-推奨構成:
-- `src/lib/db/schema.ts`
-- `src/lib/db/mappers.ts`
-- `src/types/db-schema.ts`
-- 将来的に `src/lib/db/queries/*.ts`
-
-禁止:
-- client component から DBアクセス
-- SQLで logical name を使う
-- 生の文字列結合SQL
-
----
-
-## 13. 監査ログ方針
-
-対象:
-- 作成
-- 更新
-- ステータス変更
-- 実行
-- 取り込み
-
-現DB前提:
-- `audit_logs.detail`
-- `audit_logs.actor_user_id`
-
-方針:
-- 初期は detail に JSON を集約
-- before/after 分割は現DB移行後に検討
-
----
-
-## 14. Seed / ローカル検証方針
-
-最低限必要な検証データ:
-- 1 organization
-- 複数 clients
-- 各 client の channel_accounts
-- airwork_locations
-- jobs
-- runs
-- todos
-- client_meetings
-
-ローカル確認項目:
-- 一覧0件
-- 一覧複数件
-- 不正ID詳細
-- APIエラー
-- org絞り込み
-
----
-
-## 15. 完了条件
-
-Phase 1 完了条件:
-- `/clients`, `/jobs`, `/runs`, `/todos` が表示可能
-- API接続済み
-- empty/loading/error 対応済み
-- StatusBadge 適用済み
-- actual DB name ベースで実装済み
-- `pnpm exec tsc --noEmit` 通過
-- `pnpm lint` 通過
-
-Phase 2 完了条件:
-- 詳細画面4本が遷移可能
-- 関連データ表示
-- 404/権限エラー処理済み
-
----
-
-## 16. Codex向け実装ルール
-
-- 1タスク = 1機能単位
-- 最小差分
-- 既存構造尊重
-- route handler は薄く
-- SQLは actual DB names
-- mapper で UI/domain alias を吸収
-- 画面実装時に共通UIを使い回す
-- secrets は server-only
-- 変更時は関連 docs も更新
-
----
-
-## 17. 直近の実装優先順位
-
-1. 共通UI追加
-   - EmptyState
-   - LoadingState
-   - ErrorState
-   - SummaryCard
-   - DataTable
-
-2. read API追加
-   - `GET /api/clients`
-   - `GET /api/jobs`
-   - `GET /api/runs`
-   - `GET /api/todos`
-
-3. 一覧画面接続
-   - `/clients`
-   - `/jobs`
-   - `/runs`
-   - `/todos`
-
-4. 詳細APIと詳細画面
-
-5. 認証・org絞り込み強化
-
----
-
-## 18. 保存先推奨
-
-本書は以下に保存する。
-
-- `Docs/implementation-plan.md`
-
-必要に応じて関連文書:
-- `Docs/db/db-alignment-policy.md`
-- `Docs/db/actual-db-mapping-notes.md`
-- `Docs/design/basic-design-v2.md`
-- `Docs/design/detailed-design-v2.md`
-- `AGENTS.md`
+## 6. 完了定義（この計画書の運用ルール）
+
+- 各 PR は本書記載の Scope を超えない。
+- 追加対応が必要な場合は、該当 PR の「Out of Scope」から切り出して次 PR に明示移送する。
+- 実装完了時は最低限以下を実施する。
+  - `pnpm exec tsc --noEmit`
+  - `pnpm lint`
+- 仕様変更が発生した場合は `Docs/implementation-plan.md` と関連 Docs を同一 PR で更新する。
