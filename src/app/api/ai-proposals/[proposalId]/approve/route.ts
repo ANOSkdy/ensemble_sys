@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
+import { proposalApiErrorResponse } from "@/lib/api/proposal-api-errors"
 import { createJobRevisionFromProposal } from "@/lib/db/queries/create-job-revision-from-proposal"
-import { proposalApproveSchema } from "@/lib/validators/schemas"
+import { proposalApproveSchema, proposalPathParamSchema } from "@/lib/validators/schemas"
 
 export const runtime = "nodejs"
 
@@ -9,19 +10,39 @@ export async function POST(
   { params }: { params: Promise<{ proposalId: string }> },
 ) {
   try {
-    const { proposalId } = await params
-    const json = await request.json()
+    const paramsParsed = proposalPathParamSchema.safeParse(await params)
+    if (!paramsParsed.success) {
+      return proposalApiErrorResponse({
+        status: 422,
+        error: "validation_error",
+        code: "INVALID_PROPOSAL_ID",
+        issues: paramsParsed.error.flatten(),
+      })
+    }
+
+    let json: unknown
+    try {
+      json = await request.json()
+    } catch {
+      return proposalApiErrorResponse({
+        status: 422,
+        error: "validation_error",
+        code: "INVALID_JSON_BODY",
+      })
+    }
 
     const parsed = proposalApproveSchema.safeParse({
-      ...json,
-      proposal_id: proposalId,
+      ...(json && typeof json === "object" ? json : {}),
+      proposal_id: paramsParsed.data.proposalId,
     })
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, error: "invalid payload", issues: parsed.error.flatten() },
-        { status: 400 },
-      )
+      return proposalApiErrorResponse({
+        status: 422,
+        error: "validation_error",
+        code: "INVALID_APPROVAL_PAYLOAD",
+        issues: parsed.error.flatten(),
+      })
     }
 
     const approved = await createJobRevisionFromProposal({
@@ -47,16 +68,25 @@ export async function POST(
       (error.message === "AI proposal already approved." ||
         error.message === "AI proposal status transition is invalid.")
     ) {
-      return NextResponse.json({ ok: false, error: "invalid proposal status transition" }, { status: 409 })
+      return proposalApiErrorResponse({
+        status: 409,
+        error: "conflict",
+        code: "INVALID_PROPOSAL_STATUS_TRANSITION",
+      })
     }
 
     if (error instanceof Error && error.message === "AI proposal not found.") {
-      return NextResponse.json({ ok: false, error: "not found" }, { status: 404 })
+      return proposalApiErrorResponse({
+        status: 404,
+        error: "not_found",
+        code: "PROPOSAL_NOT_FOUND",
+      })
     }
 
-    return NextResponse.json(
-      { ok: false, error: "failed to approve proposal" },
-      { status: 500 },
-    )
+    return proposalApiErrorResponse({
+      status: 500,
+      error: "internal_server_error",
+      code: "PROPOSAL_APPROVE_FAILED",
+    })
   }
 }

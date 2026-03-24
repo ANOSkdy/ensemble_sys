@@ -1,7 +1,8 @@
 ﻿import { NextResponse } from "next/server"
+import { proposalApiErrorResponse } from "@/lib/api/proposal-api-errors"
 import { sql } from "@/lib/db/client"
 import { createManualPublishRun } from "@/lib/db/queries/create-manual-publish-run"
-import { queuePublishRunSchema } from "@/lib/validators/schemas"
+import { queuePublishRunSchema, revisionPathParamSchema } from "@/lib/validators/schemas"
 
 export const runtime = "nodejs"
 
@@ -10,8 +11,40 @@ export async function POST(
   { params }: { params: Promise<{ revisionId: string }> },
 ) {
   try {
-    const { revisionId } = await params
-    const json = await request.json()
+    const paramsParsed = revisionPathParamSchema.safeParse(await params)
+    if (!paramsParsed.success) {
+      return proposalApiErrorResponse({
+        status: 422,
+        error: "validation_error",
+        code: "INVALID_REVISION_ID",
+        issues: paramsParsed.error.flatten(),
+      })
+    }
+
+    let json: unknown
+    try {
+      json = await request.json()
+    } catch {
+      return proposalApiErrorResponse({
+        status: 422,
+        error: "validation_error",
+        code: "INVALID_JSON_BODY",
+      })
+    }
+
+    const parsed = queuePublishRunSchema.safeParse({
+      ...(json && typeof json === "object" ? json : {}),
+      job_revision_id: paramsParsed.data.revisionId,
+    })
+
+    if (!parsed.success) {
+      return proposalApiErrorResponse({
+        status: 422,
+        error: "validation_error",
+        code: "INVALID_QUEUE_PAYLOAD",
+        issues: parsed.error.flatten(),
+      })
+    }
 
     const revisionRows = await sql`
       select
@@ -23,7 +56,8 @@ export async function POST(
       from job_revisions jr
       inner join job_postings jp on jp.id = jr.job_posting_id
       inner join jobs j on j.id = jp.job_id
-      where jr.id::text = ${revisionId}
+      where jr.id::text = ${parsed.data.job_revision_id}
+        and jr.org_id::text = ${parsed.data.org_id}
       limit 1
     `
 
@@ -38,35 +72,28 @@ export async function POST(
       | undefined
 
     if (!revision) {
-      return NextResponse.json(
-        { ok: false, error: "revision not found" },
-        { status: 404 },
-      )
+      return proposalApiErrorResponse({
+        status: 404,
+        error: "not_found",
+        code: "REVISION_NOT_FOUND",
+      })
     }
 
-    const parsed = queuePublishRunSchema.safeParse({
-      ...json,
+    const created = await createManualPublishRun({
+      ...parsed.data,
       org_id: revision.org_id,
       client_id: revision.client_id,
       job_posting_id: revision.job_posting_id,
       job_revision_id: revision.id,
     })
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, error: "invalid payload", issues: parsed.error.flatten() },
-        { status: 400 },
-      )
-    }
-
-    const created = await createManualPublishRun(parsed.data)
-
     return NextResponse.json({ ok: true, data: created }, { status: 201 })
   } catch (error) {
     console.error("POST /api/job-revisions/[revisionId]/queue-publish failed", error)
-    return NextResponse.json(
-      { ok: false, error: "failed to queue publish run" },
-      { status: 500 },
-    )
+    return proposalApiErrorResponse({
+      status: 500,
+      error: "internal_server_error",
+      code: "QUEUE_PUBLISH_FAILED",
+    })
   }
 }

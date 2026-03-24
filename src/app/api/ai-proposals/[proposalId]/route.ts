@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
+import { proposalApiErrorResponse } from "@/lib/api/proposal-api-errors"
 import { getAiProposalDetail } from "@/lib/db/queries/get-ai-proposal-detail"
-import { proposalStatusSchema } from "@/lib/validators/schemas"
+import {
+  proposalDetailQuerySchema,
+  proposalPathParamSchema,
+} from "@/lib/validators/schemas"
 
 export const runtime = "nodejs"
 
@@ -9,41 +13,52 @@ export async function GET(
   { params }: { params: Promise<{ proposalId: string }> },
 ) {
   try {
-    const { proposalId } = await params
+    const paramsParsed = proposalPathParamSchema.safeParse(await params)
+    if (!paramsParsed.success) {
+      return proposalApiErrorResponse({
+        status: 422,
+        error: "validation_error",
+        code: "INVALID_PROPOSAL_ID",
+        issues: paramsParsed.error.flatten(),
+      })
+    }
+
     const searchParams = new URL(request.url).searchParams
+    const queryParsed = proposalDetailQuerySchema.safeParse({
+      org_id: searchParams.get("org_id"),
+      status: searchParams.get("status") ?? undefined,
+    })
 
-    const statusParam = searchParams.get("status")
-
-    let status: ReturnType<typeof proposalStatusSchema.parse> | undefined
-
-    if (statusParam) {
-      const statusParsed = proposalStatusSchema.safeParse(statusParam)
-
-      if (!statusParsed.success) {
-        return NextResponse.json({ ok: false, error: "invalid status" }, { status: 400 })
-      }
-
-      status = statusParsed.data
+    if (!queryParsed.success) {
+      return proposalApiErrorResponse({
+        status: 422,
+        error: "validation_error",
+        code: "INVALID_QUERY",
+        issues: queryParsed.error.flatten(),
+      })
     }
 
     const data = await getAiProposalDetail({
-      id: proposalId,
-      status,
+      id: paramsParsed.data.proposalId,
+      org_id: queryParsed.data.org_id,
+      status: queryParsed.data.status,
     })
 
     if (!data) {
-      return NextResponse.json(
-        { ok: false, error: "proposal not found" },
-        { status: 404 },
-      )
+      return proposalApiErrorResponse({
+        status: 404,
+        error: "not_found",
+        code: "PROPOSAL_NOT_FOUND",
+      })
     }
 
     return NextResponse.json({ ok: true, data })
   } catch (error) {
     console.error("GET /api/ai-proposals/[proposalId] failed", error)
-    return NextResponse.json(
-      { ok: false, error: "failed to fetch proposal" },
-      { status: 500 },
-    )
+    return proposalApiErrorResponse({
+      status: 500,
+      error: "internal_server_error",
+      code: "PROPOSAL_READ_FAILED",
+    })
   }
 }

@@ -71,6 +71,19 @@ export const proposalApproveSchema = z.object({
 
 export const proposalStatusSchema = z.enum(AI_PROPOSAL_STATUSES)
 
+export const proposalDetailQuerySchema = z.object({
+  org_id: postgresUuidSchema,
+  status: proposalStatusSchema.optional(),
+})
+
+export const proposalPathParamSchema = z.object({
+  proposalId: postgresUuidSchema,
+})
+
+export const revisionPathParamSchema = z.object({
+  revisionId: postgresUuidSchema,
+})
+
 export const queuePublishRunSchema = z.object({
   org_id: postgresUuidSchema,
   client_id: postgresUuidSchema,

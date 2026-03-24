@@ -17,6 +17,7 @@ export type AiProposalDetail = {
 
 export type GetAiProposalDetailInput = {
   id: string
+  org_id?: string
   status?: AiProposalStatus
 }
 
@@ -37,6 +38,7 @@ export async function getAiProposalDetail(
       created_at::text
     from ai_proposals
     where id::text = ${input.id}
+      and (${input.org_id ?? null}::text is null or org_id::text = ${input.org_id ?? null}::text)
       and (${input.status ?? null}::text is null or status = ${input.status ?? null}::text)
     limit 1
   `
