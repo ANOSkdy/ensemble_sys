@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { createJobRevisionFromProposal } from "@/lib/db/queries/create-job-revision-from-proposal"
 import { proposalApproveSchema } from "@/lib/validators/schemas"
 
@@ -24,16 +24,32 @@ export async function POST(
       )
     }
 
-    const revision = await createJobRevisionFromProposal({
+    const approved = await createJobRevisionFromProposal({
       org_id: parsed.data.org_id,
       proposal_id: parsed.data.proposal_id,
       created_by: parsed.data.approved_by,
       approved_by: parsed.data.approved_by,
     })
 
-    return NextResponse.json({ ok: true, data: revision }, { status: 201 })
+    return NextResponse.json(
+      {
+        ok: true,
+        data: approved.revision,
+        job_posting: approved.job_posting,
+      },
+      { status: 201 },
+    )
   } catch (error) {
     console.error("POST /api/ai-proposals/[proposalId]/approve failed", error)
+
+    if (error instanceof Error && error.message === "AI proposal already approved.") {
+      return NextResponse.json({ ok: false, error: "proposal already approved" }, { status: 409 })
+    }
+
+    if (error instanceof Error && error.message === "AI proposal not found.") {
+      return NextResponse.json({ ok: false, error: "not found" }, { status: 404 })
+    }
+
     return NextResponse.json(
       { ok: false, error: "failed to approve proposal" },
       { status: 500 },
