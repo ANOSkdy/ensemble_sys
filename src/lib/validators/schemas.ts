@@ -1,4 +1,10 @@
 ﻿import { z } from "zod"
+import {
+  JOB_STATUSES,
+  RUN_CHANNELS,
+  RUN_FILE_FORMATS,
+  RUN_TYPES,
+} from "@/lib/constants/db-enums"
 
 const postgresUuidSchema = z.string().regex(
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
@@ -26,12 +32,12 @@ export const jobCreateSchema = z.object({
   org_id: z.string().uuid(),
   client_id: z.string().uuid(),
   internal_title: z.string().min(1).max(200),
-  status: z.enum(["active", "archived"]),
+  status: z.enum(JOB_STATUSES),
 })
 
 export const jobUpdateSchema = z.object({
   internal_title: z.string().min(1).max(200).optional(),
-  status: z.enum(["active", "archived"]).optional(),
+  status: z.enum(JOB_STATUSES).optional(),
 })
 
 export const todoUpdateSchema = z.object({
@@ -68,8 +74,8 @@ export const queuePublishRunSchema = z.object({
   job_posting_id: postgresUuidSchema,
   job_revision_id: postgresUuidSchema,
   created_by: postgresUuidSchema,
-  channel: z.literal("airwork").default("airwork"),
-  run_type: z.literal("update").default("update"),
-  file_format: z.enum(["txt", "xlsx"]).default("txt"),
+  channel: z.enum(RUN_CHANNELS).default(RUN_CHANNELS[0]),
+  run_type: z.enum(RUN_TYPES).default(RUN_TYPES[0]),
+  file_format: z.enum(RUN_FILE_FORMATS).default(RUN_FILE_FORMATS[0]),
 })
 

@@ -1,10 +1,11 @@
 import "server-only"
+import type { JobStatus } from "@/lib/constants/db-enums"
 import { sql } from "@/lib/db/client"
 
 export type UpdateJobInput = {
   id: string
   internal_title?: string
-  status?: "active" | "archived"
+  status?: JobStatus
 }
 
 export async function updateJob(input: UpdateJobInput) {

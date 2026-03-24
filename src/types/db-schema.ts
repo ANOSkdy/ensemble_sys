@@ -1,3 +1,12 @@
+import type {
+  JobRevisionSource,
+  JobRevisionStatus,
+  JobStatus,
+  RunChannel,
+  RunFileFormat,
+  RunType,
+} from "@/lib/constants/db-enums"
+
 ﻿export type DbId = string
 
 export type DbOrganization = {
@@ -48,7 +57,7 @@ export type DbJob = {
   client_id: DbId
   internal_title?: string | null
   memo?: string | null
-  status?: string | null
+  status?: JobStatus | null
 }
 
 export type DbJobPosting = {
@@ -64,10 +73,10 @@ export type DbJobRevision = {
   org_id: DbId
   job_posting_id: DbId
   rev_no?: number | null
-  source?: string | null
+  source?: JobRevisionSource | null
   payload_json?: unknown
   payload_hash?: string | null
-  status?: string | null
+  status?: JobRevisionStatus | null
 }
 
 export type DbAiProposal = {
@@ -83,9 +92,9 @@ export type DbAiProposal = {
 export type DbRun = {
   id: DbId
   org_id: DbId
-  run_type: string
-  channel?: string | null
-  file_format?: string | null
+  run_type: RunType
+  channel?: RunChannel | null
+  file_format?: RunFileFormat | null
   file_sha256?: string | null
   created_by?: DbId | null
   executed_by?: DbId | null

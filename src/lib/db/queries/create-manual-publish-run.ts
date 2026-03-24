@@ -1,4 +1,15 @@
 ﻿import "server-only"
+import {
+  RUN_CHANNELS,
+  RUN_FILE_FORMATS,
+  RUN_ITEM_ACTIONS,
+  RUN_STATUSES,
+  RUN_TYPES,
+  type RunChannel,
+  type RunFileFormat,
+  type RunStatus,
+  type RunType,
+} from "@/lib/constants/db-enums"
 import { sql } from "@/lib/db/client"
 
 export type CreateManualPublishRunInput = {
@@ -7,19 +18,19 @@ export type CreateManualPublishRunInput = {
   job_posting_id: string
   job_revision_id: string
   created_by: string
-  channel?: string
-  run_type?: string
-  file_format?: string
+  channel?: RunChannel
+  run_type?: RunType
+  file_format?: RunFileFormat
 }
 
 export type RunRow = {
   id: string
   org_id: string
   client_id: string
-  channel: string
-  run_type: string
-  status: string
-  file_format: string
+  channel: RunChannel
+  run_type: RunType
+  status: RunStatus
+  file_format: RunFileFormat
   file_blob_url: string | null
   file_sha256: string | null
   created_by: string | null
@@ -30,9 +41,9 @@ export type RunRow = {
 export async function createManualPublishRun(
   input: CreateManualPublishRunInput,
 ): Promise<{ run: RunRow; runItemId: string }> {
-  const channel = input.channel ?? "airwork"
-  const runType = input.run_type ?? "update"
-  const fileFormat = input.file_format ?? "txt"
+  const channel = input.channel ?? RUN_CHANNELS[0]
+  const runType = input.run_type ?? RUN_TYPES[0]
+  const fileFormat = input.file_format ?? RUN_FILE_FORMATS[0]
 
   const runRows = await sql`
     insert into runs (
@@ -49,7 +60,7 @@ export async function createManualPublishRun(
       ${input.client_id}::uuid,
       ${channel},
       ${runType},
-      ${"draft"},
+      ${RUN_STATUSES[0]},
       ${fileFormat},
       ${input.created_by}::uuid
     )
@@ -82,7 +93,7 @@ export async function createManualPublishRun(
       ${run.id}::uuid,
       ${input.job_posting_id}::uuid,
       ${input.job_revision_id}::uuid,
-      ${"update"},
+      ${RUN_ITEM_ACTIONS[0]},
       ${JSON.stringify([])}::jsonb
     )
     returning id::text
