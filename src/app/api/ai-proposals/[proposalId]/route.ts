@@ -1,15 +1,35 @@
-﻿import { NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { getAiProposalDetail } from "@/lib/db/queries/get-ai-proposal-detail"
+import { proposalStatusSchema } from "@/lib/validators/schemas"
 
 export const runtime = "nodejs"
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ proposalId: string }> },
 ) {
   try {
     const { proposalId } = await params
-    const data = await getAiProposalDetail(proposalId)
+    const searchParams = new URL(request.url).searchParams
+
+    const statusParam = searchParams.get("status")
+
+    let status: ReturnType<typeof proposalStatusSchema.parse> | undefined
+
+    if (statusParam) {
+      const statusParsed = proposalStatusSchema.safeParse(statusParam)
+
+      if (!statusParsed.success) {
+        return NextResponse.json({ ok: false, error: "invalid status" }, { status: 400 })
+      }
+
+      status = statusParsed.data
+    }
+
+    const data = await getAiProposalDetail({
+      id: proposalId,
+      status,
+    })
 
     if (!data) {
       return NextResponse.json(

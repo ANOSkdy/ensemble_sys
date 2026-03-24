@@ -1,4 +1,10 @@
 export const JOB_STATUSES = ["active", "archived"] as const
+export const AI_PROPOSAL_STATUSES = [
+  "generated",
+  "approved",
+  "rejected",
+  "applied",
+] as const
 
 export const JOB_REVISION_SOURCES = ["ai"] as const
 export const JOB_REVISION_STATUSES = ["approved"] as const
@@ -11,6 +17,7 @@ export const RUN_FILE_FORMATS = ["txt", "xlsx"] as const
 export const RUN_ITEM_ACTIONS = ["update"] as const
 
 export type JobStatus = (typeof JOB_STATUSES)[number]
+export type AiProposalStatus = (typeof AI_PROPOSAL_STATUSES)[number]
 export type JobRevisionSource = (typeof JOB_REVISION_SOURCES)[number]
 export type JobRevisionStatus = (typeof JOB_REVISION_STATUSES)[number]
 export type RunChannel = (typeof RUN_CHANNELS)[number]

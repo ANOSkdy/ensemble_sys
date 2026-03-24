@@ -3,6 +3,7 @@ import { JOB_STATUSES, type JobStatus } from "@/lib/constants/db-enums"
 import { getJobDetail } from "@/lib/db/queries/job-detail"
 import { updateJob } from "@/lib/db/queries/update-job"
 import { recordAuditLog } from "@/lib/db/audit-log"
+import { proposalStatusSchema } from "@/lib/validators/schemas"
 
 export const runtime = "nodejs"
 
@@ -16,7 +17,7 @@ function getRouteId(params: unknown): string | null {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id?: string; jobId?: string }> },
 ) {
   const params = await context.params
@@ -26,7 +27,24 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "invalid id" }, { status: 400 })
   }
 
-  const data = await getJobDetail(id)
+  const searchParams = new URL(request.url).searchParams
+  const proposalStatusParam = searchParams.get("proposal_status")
+  let proposalStatus: ReturnType<typeof proposalStatusSchema.parse> | undefined
+
+  if (proposalStatusParam) {
+    const parsedStatus = proposalStatusSchema.safeParse(proposalStatusParam)
+
+    if (!parsedStatus.success) {
+      return NextResponse.json({ ok: false, error: "invalid proposal_status" }, { status: 400 })
+    }
+
+    proposalStatus = parsedStatus.data
+  }
+
+  const data = await getJobDetail({
+    id,
+    proposalStatus,
+  })
 
   if (!data.job) {
     return NextResponse.json({ ok: false, error: "not found" }, { status: 404 })
