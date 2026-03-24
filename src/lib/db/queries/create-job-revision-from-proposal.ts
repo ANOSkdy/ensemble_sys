@@ -1,5 +1,11 @@
 import "server-only"
 import { createHash } from "node:crypto"
+import {
+  JOB_REVISION_SOURCES,
+  JOB_REVISION_STATUSES,
+  type JobRevisionSource,
+  type JobRevisionStatus,
+} from "@/lib/constants/db-enums"
 import { sql } from "@/lib/db/client"
 import { getAiProposalDetail } from "@/lib/db/queries/get-ai-proposal-detail"
 
@@ -15,8 +21,8 @@ export type JobRevisionRow = {
   org_id: string
   job_posting_id: string
   rev_no: number
-  source: string
-  status: string
+  source: JobRevisionSource
+  status: JobRevisionStatus
   payload_json: unknown
   payload_hash: string
   created_by: string | null
@@ -65,8 +71,8 @@ export async function createJobRevisionFromProposal(
       ${input.org_id}::uuid,
       ${proposal.job_posting_id}::uuid,
       ${nextRevNo},
-      ${"ai"},
-      ${"approved"},
+      ${JOB_REVISION_SOURCES[0]},
+      ${JOB_REVISION_STATUSES[0]},
       ${payloadJsonText}::jsonb,
       ${payloadHash},
       ${input.created_by}::uuid,

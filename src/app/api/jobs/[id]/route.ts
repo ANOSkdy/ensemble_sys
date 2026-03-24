@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { JOB_STATUSES, type JobStatus } from "@/lib/constants/db-enums"
 import { getJobDetail } from "@/lib/db/queries/job-detail"
 import { updateJob } from "@/lib/db/queries/update-job"
 import { recordAuditLog } from "@/lib/db/audit-log"
@@ -54,8 +55,8 @@ export async function PATCH(
         : undefined
 
     const status =
-      json.status === "active" || json.status === "archived"
-        ? json.status
+      typeof json.status === "string" && JOB_STATUSES.includes(json.status as JobStatus)
+        ? (json.status as JobStatus)
         : undefined
 
     if (!internal_title && !status) {
